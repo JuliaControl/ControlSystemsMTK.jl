@@ -3,6 +3,12 @@ uuid = "687d7614-c7e5-45fc-bfc3-9ee385575c88"
 authors = ["Fredrik Bagge Carlson"]
 version = "0.1.0"
 
+[deps]
+ControlSystems = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+
 [compat]
 julia = "1.6"
 

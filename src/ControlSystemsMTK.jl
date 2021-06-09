@@ -124,10 +124,10 @@ function ControlSystems.ss(sys::ODESystem, inputs, outputs)
     eqs     = equations(sys)
     diffeqs = [e.rhs for e in eqs if Symbolics.is_derivative(e.lhs)]
     aeqs    = [e.rhs for e in eqs if e.lhs ∈ outputs]
-    @show A       = Symbolics.jacobian(diffeqs, x) .|> numeric
-    @show B       = Symbolics.jacobian(diffeqs, u) .|> numeric
-    @show C       = Symbolics.jacobian(aeqs, x)    .|> numeric
-    @show D       = Symbolics.jacobian(aeqs, u)    .|> numeric
+    A       = Symbolics.jacobian(diffeqs, x) .|> numeric
+    B       = Symbolics.jacobian(diffeqs, u) .|> numeric
+    C       = Symbolics.jacobian(aeqs, x)    .|> numeric
+    D       = Symbolics.jacobian(aeqs, u)    .|> numeric
     ss(A,B,C,D)
 end
 
