@@ -21,6 +21,8 @@ import ModelingToolkit: ODESystem
 using DifferentialEquations
 using ModelingToolkit.Symbolics
 
+export sconnect, feedback, ODESystem
+
 ModelingToolkit.ODESystem(sys::LTISystem; kwargs...) = ODESystem(ss(sys); kwargs...)
 
 "Create an ODESystem from ControlSystems.StateSpace"
@@ -47,7 +49,7 @@ function ModelingToolkit.ODESystem(sys::AbstractStateSpace{Continuous};
 end
 
 "connect input to ODESystem"
-function connect(input, sys::ODESystem; name=Symbol("$(sys.name) with input"))
+function sconnect(input, sys::ODESystem; name=Symbol("$(sys.name) with input"))
     @parameters t
     @variables u(t) y(t)
     ODESystem([
@@ -57,7 +59,7 @@ function connect(input, sys::ODESystem; name=Symbol("$(sys.name) with input"))
         ], t; systems=[sys], name)
 end
 
-function connect(input::Function, sys::ODESystem; name=Symbol("$(sys.name) with input"))
+function sconnect(input::Function, sys::ODESystem; name=Symbol("$(sys.name) with input"))
     @parameters t
     @variables u(t) y(t)
     ODESystem([
@@ -67,7 +69,7 @@ function connect(input::Function, sys::ODESystem; name=Symbol("$(sys.name) with 
 end
 
 "connect output of one sys to input of other"
-function connect(sys1::ODESystem, sys2::ODESystem; name=Symbol("$(sys1.name)*$(sys2.name)"))
+function sconnect(sys1::ODESystem, sys2::ODESystem; name=Symbol("$(sys1.name)*$(sys2.name)"))
     @parameters t
     @variables u(t) y(t)
     ODESystem([

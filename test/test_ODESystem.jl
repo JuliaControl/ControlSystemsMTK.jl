@@ -1,3 +1,4 @@
+using ControlSystemsMTK, ControlSystems, ModelingToolkit, DifferentialEquations
 ## Test SISO (single input, single output) system
 @parameters t
 
@@ -5,11 +6,14 @@ P0 = tf(1.0, [1, 1])                         |> ss
 C0 = pid(kp = 1, ki = 1) * tf(1, [0.01, 1])  |> ss
 
 @named P           = ODESystem(P0)
-# @named nonlinear_P = connect(x->sign(x)*sqrt(abs(x)), P) # apply input-nonlinearity
+# @named nonlinear_P = sconnect(x->sign(x)*sqrt(abs(x)), P) # apply input-nonlinearity
 @named C           = ODESystem(C0)
-@named loopgain    = connect(C, P)
+@named loopgain    = sconnect(C, P)
 @named fb          = feedback(loopgain, sin(t))
 @show fb = structural_simplify(fb)
+
+@test length(states(P)) == 3 # 1 + u + y
+@test length(states(C)) == 4 # 2 + u + y
 
 x0 = Pair[
     # fb.loopgain.nonlinear_P.P.x1 => 1 # a bit inconvenient to specify initial states
@@ -19,18 +23,20 @@ x0 = Pair[
 ]
 p = Pair[]
 
-prob = ODEProblem(simplified_sys, x0, (0.0, 10.0), p)
-sol = solve(prob, Tsit5())
+prob = ODEProblem(fb, x0, (0.0, 10.0), p)
+sol = solve(prob, Tsit5())   
 plot(sol)
+# xtraj = Array(sol)[3,:]
+# lsim(fb, )
+
 
 # === Go the other way, ODESystem -> StateSpace ================================
-using Test
-x = ModelingToolkit.get_states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
+x = ModelingToolkit.states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
 P02 = ss(P, x[2:2], x[3:3])
 @test P02 == P0 # verify that we get back what we started with
 
 # same for controller
-x = ModelingToolkit.get_states(C) 
+x = ModelingToolkit.states(C) 
 C02 = ss(C, x[3:3], x[4:4])
 @test C02 == C0
 
@@ -38,7 +44,7 @@ C02 = ss(C, x[3:3], x[4:4])
 @variables r(t)
 @named fbu = feedback(loopgain, r)
 @show fbu = structural_simplify(fbu)
-fbus = ModelingToolkit.get_states(fbu)
+fbus = ModelingToolkit.states(fbu)
 fb2 = @nonamespace ss(fbu, [r], [fbu.y])
 feedback(P0*C0) # fb2 should be similar to this feeback interconnection calculated by ControlSystems
 
@@ -74,7 +80,7 @@ C = [
 @info "Resonance frequency: $((imag.(eigvals(A)) ./ (2π)))"
 
 #
-using NNlib: σ
+
 P0 = ss(A,B,C,0)
 
 s = tf("s")
@@ -99,11 +105,11 @@ fb = let ref0 = 0.2sin(t), disturbance = 100sign(t-10)
         u    ~ ref0 # The input 
         ref0 ~ RF.u # filter position reference
         expand_derivatives(Dₜ(ref0) ~ RFv.u) # Filter vel reference
-        RF.y - P.y₁ ~ Cp.u # pos controller input is pos error
-        disturbance ~ P.u₂ # disturbance enters on arm acceleration
-        Cp.y + RFv.y - P.y₂ ~ Cv.u # vel controller input is vel error + pos controller output
-        Cv.y + Fp.y ~ P.u₁ # robot input is vel controller output and trq ff
-        y ~ P.y₁ # output is robot motor pos
+        RF.y - P.y1 ~ Cp.u # pos controller input is pos error
+        disturbance ~ P.u2 # disturbance enters on arm acceleration
+        Cp.y + RFv.y - P.y2 ~ Cv.u # vel controller input is vel error + pos controller output
+        Cv.y + Fp.y ~ P.u1 # robot input is vel controller output and trq ff
+        y ~ P.y1 # output is robot motor pos
         RF.y ~ Fp.u
     ], t; systems=[P, Cv, Cp, Fp, RF, RFv], name=:feedback)
 end
@@ -120,8 +126,8 @@ prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), p, jac=true)
 sol = solve(prob, OrdinaryDiffEq.Rodas5(), rtol=1e-8, atol=1e-8, saveat=0:0.01:20)
 @show sol.retcode
 plot(sol, layout=length(states(simplified_sys))+1)
-plot!(sol.t, sol[P.x₁]-sol[P.x₃], sp=12, lab="Δq")
+plot!(sol.t, sol[P.x1]-sol[P.x3], sp=12, lab="Δq")
 
 ##
-plot(sol.t, sol[P.x₁]-@nonamespace(sol[fb.u]), lab="qₘ", title="Control error")
-plot!(sol.t, sol[P.x₃]-@nonamespace(sol[fb.u]), lab="qₐ")
+plot(sol.t, sol[P.x1]-@nonamespace(sol[fb.u]), lab="qₘ", title="Control error")
+plot!(sol.t, sol[P.x3]-@nonamespace(sol[fb.u]), lab="qₐ")
