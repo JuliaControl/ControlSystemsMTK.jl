@@ -9,6 +9,7 @@ DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 RobustAndOptimalControl = "21fd56a4-db03-40ee-82ee-a87907bee541"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 julia = "1.6"

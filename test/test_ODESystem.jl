@@ -1,4 +1,4 @@
-using ControlSystemsMTK, ControlSystems, ModelingToolkit, DifferentialEquations
+using ControlSystemsMTK, ControlSystems, ModelingToolkit, DifferentialEquations, RobustAndOptimalControl
 ## Test SISO (single input, single output) system
 @parameters t
 
@@ -10,7 +10,7 @@ C0 = pid(kp = 1, ki = 1) * tf(1, [0.01, 1])  |> ss
 @named C           = ODESystem(C0)
 @named loopgain    = sconnect(C, P)
 @named fb          = feedback(loopgain, sin(t))
-@show fb = structural_simplify(fb)
+@show fb           = structural_simplify(fb)
 
 @test length(states(P)) == 3 # 1 + u + y
 @test length(states(C)) == 4 # 2 + u + y
@@ -31,21 +31,27 @@ plot(sol)
 
 
 # === Go the other way, ODESystem -> StateSpace ================================
-x = ModelingToolkit.states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
-P02 = ss(P, x[2:2], x[3:3])
+x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
+@nonamespace P02_named = named_ss(P, P.u, [P.y])
+@test P02_named.x_names == [Symbol("x1(t)")]
+@test P02_named.u_names == [Symbol("u(t)")]
+@test P02_named.y_names == [Symbol("y(t)")]
+
+@nonamespace P02 = ss(P, P.u, P.y)
 @test P02 == P0 # verify that we get back what we started with
 
 # same for controller
-x = ModelingToolkit.states(C) 
-C02 = ss(C, x[3:3], x[4:4])
+x = states(C) 
+@nonamespace C02 = ss(C, [C.u], C.y)
 @test C02 == C0
 
 # Now try do the same with the feedback interconnection. This fails, I cannot figure out how to provide the input I want to linearize w.r.t. to. Below is an attempt by creating an input variable `r`, but that causes `structural_simplify` to complain.
-@variables r(t)
-@named fbu = feedback(loopgain, r)
+@register r(t)
+@register rfun(t)
+@named fbu = feedback(loopgain, rfun(t))
 @show fbu = structural_simplify(fbu)
-fbus = ModelingToolkit.states(fbu)
-fb2 = @nonamespace ss(fbu, [r], [fbu.y])
+fbus = states(fbu)
+fb2 = @nonamespace ss(fbu, rfun(t), fbu.y)
 feedback(P0*C0) # fb2 should be similar to this feeback interconnection calculated by ControlSystems
 
 
@@ -84,20 +90,19 @@ C = [
 P0 = ss(A,B,C,0)
 
 s = tf("s")
-# estun uses parameters in the range Kp ≈ 50, Kv ≈ 300, Ki ≈ 300 (time)
 Cv0 = tx * pid(kp = 4, ki = 2) * tf(1, [0.01, 1])  #|> ss
 Cp0 = tx * pid(kp = 2)         * tf(1, [0.01, 1])  #|> ss
 
 P0i = deepcopy(P0)
 P0i.D .= 1e-8
 
-@named RF = ODESystem(tf(1, [0.001, 1]))
+@named RF = ODESystem(tf(1, [0.001, 1])) # ref filter
 @named RFv = ODESystem(tf(1, [0.001, 1]))
-@named P  = ODESystem(P0)
-@named Fv = ODESystem(inv(P0i[2,1]))
-@named Fp = ODESystem(inv(P0i[1,1]))
-@named Cv = ODESystem(Cv0)
-@named Cp = ODESystem(Cp0)
+@named P  = ODESystem(P0) # system model
+@named Fv = ODESystem(inv(P0i[2,1])) # feedforward vel
+@named Fp = ODESystem(inv(P0i[1,1])) # feedforward pos
+@named Cv = ODESystem(Cv0) # vel controller
+@named Cp = ODESystem(Cp0) # pos controller
 fb = let ref0 = 0.2sin(t), disturbance = 100sign(t-10)
     @variables u(t) y(t) 
     Dₜ = Differential(t)
