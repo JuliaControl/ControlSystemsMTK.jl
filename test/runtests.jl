@@ -6,5 +6,8 @@ using Test
         @info "Testing ODESystem"
         
         include("test_ODESystem.jl")
+    @testset "symbolic_opt" begin
+        @info "Testing symbolic_opt"
+        include("test_symbolic_opt.jl")
     end
 end
