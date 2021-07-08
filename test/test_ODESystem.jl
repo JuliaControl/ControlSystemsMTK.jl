@@ -32,7 +32,7 @@ plot(sol)
 
 # === Go the other way, ODESystem -> StateSpace ================================
 x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
-@nonamespace P02_named = named_ss(P, P.u, [P.y])
+@nonamespace P02_named = named_ss(P, [P.u], [P.y])
 @test P02_named.x_names == [Symbol("x1(t)")]
 @test P02_named.u_names == [Symbol("u(t)")]
 @test P02_named.y_names == [Symbol("y(t)")]
@@ -54,6 +54,7 @@ fbus = states(fbu)
 fb2 = @nonamespace ss(fbu, rfun(t), fbu.y)
 feedback(P0*C0) # fb2 should be similar to this feeback interconnection calculated by ControlSystems
 
+@test tf(feedback(P0*C0)) ≈ tf(fb2)
 
 
 
