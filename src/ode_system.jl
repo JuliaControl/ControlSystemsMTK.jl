@@ -114,54 +114,75 @@ Convert an `ODESystem` to a `NamedStateSpace`. `u,y` are vectors of variables de
 named_ss(sys, input(t), y)
 ```
 """
-function RobustAndOptimalControl.named_ss(sys::ODESystem, u, y)
-    u isa AbstractVector || (u = [u])
-    y isa AbstractVector || (y = [y])
-    eqs     = equations(sys)
-    # find all differential terms and filter x based on those
-    lhss    = getproperty.(eqs, :lhs)
-    dx      = filter(isdifferential, lhss)
-    x       = [dx.arguments[] for dx in dx]
-    diffeqs = [e.rhs for e in eqs if Symbolics.is_derivative(e.lhs)]
-    sy      = Set(y)
-    # aeqsl    = [e.rhs for e in eqs if e.lhs ∈ sy] # This fails if the equation is not on the right form. Below is a failed attempt at solving this.
-    # aeqsr    = [e.lhs for e in eqs if e.rhs ∈ sy]
-    # aeqs     = [aeqsl; aeqsr]
-    # might have to go through all observed variables and if an y is in there, make substitution
-    o = observed(sys)
-    olhs = Set([o.lhs for o in o])
-    # y = map(y) do y # go through all outputs and replace if they are observed
-    #     if y isa Equation # this can happen if y is observed
-    #         y = y.lhs
-    #     end
-    #     if y ∈ olhs
-    #         i = findfirst(isequal(y), olhs
-    #         return o[i].rhs
-    #     end
-    #     y
-    # end
-    eqvars = map(eqs) do eq
-        s1 = Set(Symbolics.get_variables(eq.lhs))
-        s2 = Set(Symbolics.get_variables(eq.rhs))
-        [s1; s2]
-    end
-    # start by going through observed and get those y equations, if a particular y is not observed, fall back to other method. 
-    # the aeqs are 1) observed, 2) solvefor y
-    aeqs = map(y) do y
-        y isa Equation && (return y.rhs) # in this case y is already on the required form. This happens if y ∈ observed(sys)
-        for (i,eqv) in enumerate(eqvars)
-            y ∈ eqv || continue
-            return solve_for(eqs[i], y)
-        end
-    end
-    @show aeqs
-    @show jacobian(aeqs, states(sys)) # This line fails, probably due to namespacing issues 
-    A = jacobian(diffeqs, x) .|> numeric
-    B = jacobian(diffeqs, u) .|> numeric
-    C = jacobian(aeqs, x)    .|> numeric
-    D = jacobian(aeqs, u)    .|> numeric
+# function RobustAndOptimalControl.named_ss(sys::ODESystem, u, y)
+#     u isa AbstractVector || (u = [u])
+#     y isa AbstractVector || (y = [y])
+#     eqs     = equations(sys)
+#     # find all differential terms and filter x based on those
+#     lhss    = getproperty.(eqs, :lhs)
+#     dx      = filter(isdifferential, lhss)
+#     x       = [dx.arguments[] for dx in dx]
+#     diffeqs = [e.rhs for e in eqs if Symbolics.is_derivative(e.lhs)]
+#     sy      = Set(y)
+#     # aeqsl    = [e.rhs for e in eqs if e.lhs ∈ sy] # This fails if the equation is not on the right form. Below is a failed attempt at solving this.
+#     # aeqsr    = [e.lhs for e in eqs if e.rhs ∈ sy]
+#     # aeqs     = [aeqsl; aeqsr]
+#     # might have to go through all observed variables and if an y is in there, make substitution
+#     o = observed(sys)
+#     olhs = Set([o.lhs for o in o])
+#     # y = map(y) do y # go through all outputs and replace if they are observed
+#     #     if y isa Equation # this can happen if y is observed
+#     #         y = y.lhs
+#     #     end
+#     #     if y ∈ olhs
+#     #         i = findfirst(isequal(y), olhs
+#     #         return o[i].rhs
+#     #     end
+#     #     y
+#     # end
+#     eqvars = map(eqs) do eq
+#         s1 = Set(Symbolics.get_variables(eq.lhs))
+#         s2 = Set(Symbolics.get_variables(eq.rhs))
+#         [s1; s2]
+#     end
+#     # start by going through observed and get those y equations, if a particular y is not observed, fall back to other method. 
+#     # the aeqs are 1) observed, 2) solvefor y
+#     aeqs = map(y) do y
+#         y isa Equation && (return y.rhs) # in this case y is already on the required form. This happens if y ∈ observed(sys)
+#         for (i,eqv) in enumerate(eqvars)
+#             y ∈ eqv || continue
+#             return solve_for(eqs[i], y)
+#         end
+#     end
+#     @show aeqs
+#     @show jacobian(aeqs, states(sys)) # This line fails, probably due to namespacing issues 
+#     A = jacobian(diffeqs, x) .|> numeric
+#     B = jacobian(diffeqs, u) .|> numeric
+#     C = jacobian(aeqs, x)    .|> numeric
+#     D = jacobian(aeqs, u)    .|> numeric
+#     @assert size(C, 1) == length(y) "C matrix of wrong size: $C, aeqs: $aeqs"
+#     @assert size(D) == (length(y), length(u)) "D matrix of wrong size: $D"
+#     symstr(x) = Symbol(string(x))
+#     named_ss(ss(A,B,C,D); x_names=symstr.(x), u_names=symstr.(u), y_names=symstr.(y))
+# end
+
+function RobustAndOptimalControl.named_ss(sys::ODESystem)
+    # u isa AbstractVector || (u = [u])
+    # y isa AbstractVector || (y = [y])
+    u = controls(sys)
+    y = observed(sys)
+    x = states(sys)
+    
+    A = calculate_jacobian(sys)
+    B = calculate_control_jacobian(sys) 
+    yrhs = [e.rhs for e in y]
+    ylhs = [e.lhs for e in y]
+    C = jacobian(yrhs, x)
+    D = jacobian(yrhs, u)
+    # D = 0
     @assert size(C, 1) == length(y) "C matrix of wrong size: $C, aeqs: $aeqs"
     @assert size(D) == (length(y), length(u)) "D matrix of wrong size: $D"
     symstr(x) = Symbol(string(x))
-    named_ss(ss(A,B,C,D); x_names=symstr.(x), u_names=symstr.(u), y_names=symstr.(y))
+    ff(x) = symstr(x.f)
+    named_ss(ss(A,B,C,D); x=ff.(x), u=ff.(u), y=ff.(ylhs))
 end

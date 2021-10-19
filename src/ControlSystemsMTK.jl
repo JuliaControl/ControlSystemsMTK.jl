@@ -18,6 +18,7 @@ A third idea: just use named systems with named indexing to obtain any system yo
 =#
 using ModelingToolkit, ControlSystems
 using ControlSystems: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
+using ControlSystemIdentification
 using RobustAndOptimalControl
 import ModelingToolkit: ODESystem, FnType
 using ModelingToolkit: states, observed, isdifferential
@@ -27,7 +28,7 @@ using ModelingToolkit.Symbolics: jacobian, solve_for
 using UnPack
 using Optim, Optim.LineSearches
 
-export sconnect, feedback, ODESystem, states, observed
+export sconnect, feedback, ODESystem, states, observed, named_ss
 
 include("ode_system.jl")
 include("symbolic_optimization.jl")
