@@ -16,13 +16,14 @@ Another idea: use modelingtoolkitize/build_function to obtain a function that ca
 A third idea: just use named systems with named indexing to obtain any system you want.
 
 =#
+using LinearAlgebra
 using ModelingToolkit, ControlSystems
 using ControlSystems: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
 using ControlSystemIdentification
 using RobustAndOptimalControl
 import ModelingToolkit: ODESystem, FnType
 using ModelingToolkit: states, observed, isdifferential
-using DifferentialEquations
+using OrdinaryDiffEq
 using ModelingToolkit.Symbolics
 using ModelingToolkit.Symbolics: jacobian, solve_for
 using UnPack

@@ -1,4 +1,5 @@
-using ControlSystemsMTK, ControlSystems, ModelingToolkit, DifferentialEquations, RobustAndOptimalControl
+using ControlSystemsMTK, ControlSystems, ModelingToolkit, OrdinaryDiffEq, RobustAndOptimalControl
+
 ## Test SISO (single input, single output) system
 @parameters t
 
@@ -6,11 +7,14 @@ P0 = tf(1.0, [1, 1])                         |> ss
 C0 = pid(kp = 1, ki = 1) * tf(1, [0.01, 1])  |> ss
 
 @named P           = ODESystem(P0)
+@test P isa ODESystem
+@test_broken length(ModelingToolkit.observed(P)) == P.ny
+@test_broken length(ModelingToolkit.controls(P)) == P.nu
 # @named nonlinear_P = sconnect(x->sign(x)*sqrt(abs(x)), P) # apply input-nonlinearity
 @named C           = ODESystem(C0)
 @named loopgain    = sconnect(C, P)
 @named fb          = feedback(loopgain, sin(t))
-@show fb           = structural_simplify(fb)
+fb           = structural_simplify(fb)
 
 @test length(states(P)) == 3 # 1 + u + y
 @test length(states(C)) == 4 # 2 + u + y
@@ -25,7 +29,7 @@ p = Pair[]
 
 prob = ODEProblem(fb, x0, (0.0, 10.0), p)
 sol = solve(prob, Tsit5())   
-plot(sol)
+isinteractive() && plot(sol)
 # xtraj = Array(sol)[3,:]
 # lsim(fb, )
 
@@ -49,7 +53,7 @@ x = states(C)
 @register r(t)
 @register rfun(t)
 @named fbu = feedback(loopgain, rfun(t))
-@show fbu = structural_simplify(fbu)
+fbu = structural_simplify(fbu)
 fbus = states(fbu)
 fb2 = @nonamespace ss(fbu, rfun(t), fbu.y)
 feedback(P0*C0) # fb2 should be similar to this feeback interconnection calculated by ControlSystems
@@ -58,7 +62,7 @@ feedback(P0*C0) # fb2 should be similar to this feeback interconnection calculat
 
 
 
-## Test DMM with cascade =====================================================
+## Test more complicated feedback connection =====================================================
 @parameters t
 
 Jm = 10
@@ -66,7 +70,7 @@ Ja = 30
 k  = 4e4
 c0 = 100
 c1 = 100
-c2 = 0.001 # This should be small to see large oscillations on arm side. Doesn't make much sense to have damping on arm-side anyways
+c2 = 0.001 
 tx = 20
 
 A = [
@@ -84,7 +88,7 @@ C = [
     0 1 0 0
 ]
 
-@info "Resonance frequency: $((imag.(eigvals(A)) ./ (2π)))"
+isinteractive() && @info "Resonance frequency: $((imag.(eigvals(A)) ./ (2π)))"
 
 #
 
@@ -130,10 +134,13 @@ p = Pair[]
 
 prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), p, jac=true)
 sol = solve(prob, OrdinaryDiffEq.Rodas5(), rtol=1e-8, atol=1e-8, saveat=0:0.01:20)
-@show sol.retcode
-plot(sol, layout=length(states(simplified_sys))+1)
-plot!(sol.t, sol[P.x1]-sol[P.x3], sp=12, lab="Δq")
+if isinteractive()
+    @show sol.retcode
+    plot(sol, layout=length(states(simplified_sys))+1)
+    plot!(sol.t, sol[P.x1]-sol[P.x3], sp=12, lab="Δq")
 
-##
-plot(sol.t, sol[P.x1]-@nonamespace(sol[fb.u]), lab="qₘ", title="Control error")
-plot!(sol.t, sol[P.x3]-@nonamespace(sol[fb.u]), lab="qₐ")
+    ##
+    plot(sol.t, sol[P.x1]-@nonamespace(sol[fb.u]), lab="qₘ", title="Control error")
+    plot!(sol.t, sol[P.x3]-@nonamespace(sol[fb.u]), lab="qₐ")
+
+end
