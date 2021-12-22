@@ -1,6 +1,5 @@
 module ControlSystemsMTK
 using RobustAndOptimalControl: NamedStateSpace
-@error "Det är dags att plocka upp detta igen när ny release av https://github.com/SciML/ModelingToolkit.jl är släppt"
 #=
 Ideas: All connections handled by ModelingToolkit.
 Names: 
@@ -21,7 +20,7 @@ using ModelingToolkit, ControlSystems
 using ControlSystems: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
 using ControlSystemIdentification
 using RobustAndOptimalControl
-import ModelingToolkit: ODESystem, FnType
+import ModelingToolkit: ODESystem, FnType, Symbolics
 using ModelingToolkit: states, observed, isdifferential
 using OrdinaryDiffEq
 using ModelingToolkit.Symbolics

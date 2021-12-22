@@ -4,6 +4,7 @@ authors = ["Fredrik Bagge Carlson"]
 version = "0.1.0"
 
 [deps]
+ControlSystemIdentification = "3abffc1c-5106-53b7-b354-a47bfc086282"
 ControlSystems = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"

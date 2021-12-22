@@ -1,7 +1,7 @@
 ModelingToolkit.ODESystem(sys::LTISystem; kwargs...) = ODESystem(ss(sys); kwargs...)
 
 """
-    ModelingToolkit.ODESystem(sys::AbstractStateSpace{Continuous}; name::Symbol, x0 = zeros(sys.nx), x_names, u_names, y_names)
+    ModelingToolkit.ODESystem(sys::AbstractStateSpace; name::Symbol, x0 = zeros(sys.nx), x_names, u_names, y_names)
 
 Create an ODESystem from `sys::StateSpace`. 
 
@@ -14,7 +14,7 @@ The arguments below are automatically set if the system is a `NamedStateSpace`.
 - `u_names`: A vector of symbols with input names. 
 - `y_names`: A vector of symbols with output names. 
 """
-function ModelingToolkit.ODESystem(sys::AbstractStateSpace{Continuous};
+function system_creator(constructor, sys::AbstractStateSpace;
     name::Symbol,
     x0 = zeros(sys.nx),
     x_names = [Symbol("x$i") for i in 1:sys.nx],
@@ -23,89 +23,118 @@ function ModelingToolkit.ODESystem(sys::AbstractStateSpace{Continuous};
 )
     A,B,C,D = ssdata(sys)
     nx,ny,nu = sys.nx, sys.ny, sys.nu
-    # ny == nu == 1 || @warn("MIMO systems are poorly supported for now https://github.com/SciML/ModelingToolkit.jl/issues/605")
     @parameters t
-    x = [Num(Variable{FnType{Tuple{Any},Real}}(name))(t) for name in x_names]
-    u = [Num(Variable{FnType{Tuple{Any},Real}}(name))(t) for name in u_names]
-    y = [Num(Variable{FnType{Tuple{Any},Real}}(name))(t) for name in y_names]
-    Dₜ = Differential(t)
+    x = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in x_names]
+    u = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in u_names] # TODO: should be input=true
+    y = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in y_names] # TODO: should be output=true
+    # @show typeof(u)
+    # u = map(u) do u
+    #     ModelingToolkit.toinput(u.val).f
+    # end
+    # y = map(y) do y
+    #     ModelingToolkit.tooutput(y.val).f
+    # end
+    Dₜ = if ControlSystems.isdiscrete(sys)
+        # A = A - I # Due to difference operator instead of time shift operator https://github.com/SciML/ModelingToolkit.jl/issues/1307
+        # NOTE: The difference operator appears to be a time-shift operator
+        Difference(t; dt=sys.Ts)
+    else
+        Differential(t)
+    end
     eqs = [
         Dₜ.(x) .~ A*x .+ B*u
         y      .~ C*x .+ D*u
-    ]
-    ODESystem(eqs; name, defaults = Dict(x .=> x0))
+        ]
+    constructor(eqs, t; name, defaults = Dict([x .=> x0; y .=> C*x0; u .=> 0])) # NOTE: the initial values for y and u are required since `structural_simplify` fails on discrete systems
+end
+
+function ModelingToolkit.ODESystem(sys::AbstractStateSpace, args...; kwargs...)
+    system_creator(ODESystem, sys, args...; kwargs...)
+end
+
+function ModelingToolkit.DiscreteSystem(sys::AbstractStateSpace{<:Discrete}, args...; kwargs...)
+    system_creator(DiscreteSystem, sys, args...; kwargs...)
 end
 
 function ModelingToolkit.ODESystem(sys::NamedStateSpace{Continuous};
     name::Symbol,
-    x0 = zeros(sys.nx)
+    kwargs...
 )
     @unpack x_names, u_names, y_names = sys
-    ODESystem(sys.sys; x_names, u_names, y_names)
+    ODESystem(sys.sys; x_names, u_names, y_names, name, kwargs...)
 end
 
-"connect input to ODESystem"
-function sconnect(input, sys::ODESystem; name=Symbol("$(sys.name) with input"))
-    @parameters t
-    @variables u(t) y(t)
-    ODESystem([
-            u ~ input
-            sys.u ~ input
-            y ~ sys.y
-        ], t; systems=[sys], name)
+function ModelingToolkit.ODESystem(sys::NamedStateSpace{<:Discrete};
+    name::Symbol,
+    kwargs...
+)
+    @unpack x_names, u_names, y_names = sys
+    ODESystem(sys.sys; x_names, u_names, y_names, name, kwargs...)
 end
 
-function sconnect(input::Function, sys::ODESystem; name=Symbol("$(sys.name) with input"))
+function sconnect(input, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     @parameters t
     @variables u(t) y(t)
-    ODESystem([
-            sys.u ~ input(u)
-            y ~ sys.y
-        ], t; systems=[sys], name)
+    T([
+        u ~ input
+        sys.u ~ input
+        y ~ sys.y
+    ], t; systems=[sys], name)
+end
+
+function sconnect(input::Function, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
+    @parameters t
+    @variables u(t) y(t)
+    T([
+        sys.u ~ input(u)
+        y ~ sys.y
+    ], t; systems=[sys], name)
 end
 
 "connect output of one sys to input of other"
-function sconnect(sys1::ODESystem, sys2::ODESystem; name=Symbol("$(sys1.name)*$(sys2.name)"))
+function sconnect(sys1::T, sys2::T; name=Symbol("$(sys1.name)*$(sys2.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     @parameters t
     @variables u(t) y(t)
-    ODESystem([
-            u ~ sys1.u
-            sys1.y ~ sys2.u
-            y ~ sys2.y
-        ], t; systems=[sys1, sys2], name)
+    T([
+        u ~ sys1.u
+        sys1.y ~ sys2.u
+        y ~ sys2.y
+    ], t; systems=[sys1, sys2], name)
 end
 
 "form feedback interconnection, i.e., input is `r-y`"
-function ControlSystems.feedback(loopgain::ODESystem, ref; name=Symbol("feedback $(loopgain.name)"))
+function ControlSystems.feedback(loopgain::T, ref; name=Symbol("feedback $(loopgain.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     @parameters t
     @variables u(t) y(t)
-    ODESystem([
-            u ~ ref
-            ref - loopgain.y ~ loopgain.u
-            y ~ loopgain.y
-        ], t; systems=[loopgain], name)
+    T([
+        u ~ ref
+        ref - loopgain.y ~ loopgain.u
+        y ~ loopgain.y
+    ], t; systems=[loopgain], name)
 end
 
-function ControlSystems.feedback(loopgain::ODESystem, ref::ODESystem; name=Symbol("feedback $(loopgain.name)*$(ref.name)"))
+function ControlSystems.feedback(loopgain::T, ref::T; name=Symbol("feedback $(loopgain.name)*$(ref.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     @parameters t
     @variables u(t) y(t)
-    ODESystem([
-            u ~ ref.u
-            ref.y - loopgain.y ~ loopgain.u
-            y ~ loopgain.y
-        ], t; systems=[loopgain, ref], name)
+    T([
+        u ~ ref.u
+        ref.y - loopgain.y ~ loopgain.u
+        y ~ loopgain.y
+    ], t; systems=[loopgain, ref], name)
 end
 
 numeric(x::Num) = x.val
 
 
-function ControlSystems.ss(sys::ODESystem, inputs, outputs)
+function ControlSystems.ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs)
     named_ss(sys, inputs, outputs).sys # just discard the names
 end
 
-# This approach is very brittle 
+inputs(sys) = filter(s->ModelingToolkit.isinput(s), states(sys))
+outputs(sys) = filter(s->ModelingToolkit.isoutput(s), states(sys))
+
 """
-    RobustAndOptimalControl.named_ss(sys::ODESystem, u, y)
+    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, u, y)
 
 Convert an `ODESystem` to a `NamedStateSpace`. `u,y` are vectors of variables determining the inputs and outputs respectively. If the input `u` contains a `@register`ed function, apply the function to the corresponding symbolic argument, e.g.,
 ```
@@ -114,7 +143,47 @@ Convert an `ODESystem` to a `NamedStateSpace`. `u,y` are vectors of variables de
 named_ss(sys, input(t), y)
 ```
 """
-# function RobustAndOptimalControl.named_ss(sys::ODESystem, u, y)
+function RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem; Ts = nothing, numeric=false,
+    u = controls(sys),
+    y = observed(sys),
+    x = states(sys)
+)
+
+    isempty(u) && error("No control inputs specified.")
+    isempty(y) && error("No outputs specified.")
+    
+    equation_order = map(equations(sys)) do eq # dynamics equations and states are not in the same order
+
+    end
+    A = calculate_jacobian(sys)
+    B = calculate_control_jacobian(sys) 
+    yrhs = [e.rhs for e in y]
+    ylhs = [e.lhs for e in y]
+    C = jacobian(yrhs, x)
+    D = jacobian(yrhs, u)
+    # D = 0
+    @assert size(C, 1) == length(y) "C matrix of wrong size: $C, aeqs: $aeqs"
+    @assert size(D) == (length(y), length(u)) "D matrix of wrong size: $D"
+    symstr(x) = Symbol(string(x))
+    ff(x) = symstr(x.f)
+    if numeric
+        sym2val = ModelingToolkit.defaults(sys)
+        A = substitute.(A, Ref(sym2val)) .|> ControlSystemsMTK.numeric .|> Float64
+        B = substitute.(B, Ref(sym2val)) .|> ControlSystemsMTK.numeric .|> Float64
+        C = substitute.(C, Ref(sym2val)) .|> ControlSystemsMTK.numeric .|> Float64
+        D = substitute.(D, Ref(sym2val)) .|> ControlSystemsMTK.numeric .|> Float64
+    end
+    timeevol = if Ts === nothing
+        sys isa ODESystem || error("Sample time Ts must be provided for discrete-time systems")
+        Continuous()
+    else
+        Discrete(Ts)
+    end
+    named_ss(ss(A,B,C,D,timeevol); x=ff.(x), u=ff.(u), y=ff.(ylhs))
+end
+
+# This approach is very brittle 
+# function RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, u, y)
 #     u isa AbstractVector || (u = [u])
 #     y isa AbstractVector || (y = [y])
 #     eqs     = equations(sys)
@@ -165,24 +234,3 @@ named_ss(sys, input(t), y)
 #     symstr(x) = Symbol(string(x))
 #     named_ss(ss(A,B,C,D); x_names=symstr.(x), u_names=symstr.(u), y_names=symstr.(y))
 # end
-
-function RobustAndOptimalControl.named_ss(sys::ODESystem)
-    # u isa AbstractVector || (u = [u])
-    # y isa AbstractVector || (y = [y])
-    u = controls(sys)
-    y = observed(sys)
-    x = states(sys)
-    
-    A = calculate_jacobian(sys)
-    B = calculate_control_jacobian(sys) 
-    yrhs = [e.rhs for e in y]
-    ylhs = [e.lhs for e in y]
-    C = jacobian(yrhs, x)
-    D = jacobian(yrhs, u)
-    # D = 0
-    @assert size(C, 1) == length(y) "C matrix of wrong size: $C, aeqs: $aeqs"
-    @assert size(D) == (length(y), length(u)) "D matrix of wrong size: $D"
-    symstr(x) = Symbol(string(x))
-    ff(x) = symstr(x.f)
-    named_ss(ss(A,B,C,D); x=ff.(x), u=ff.(u), y=ff.(ylhs))
-end

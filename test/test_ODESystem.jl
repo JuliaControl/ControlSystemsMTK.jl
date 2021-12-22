@@ -36,7 +36,7 @@ isinteractive() && plot(sol)
 
 # === Go the other way, ODESystem -> StateSpace ================================
 x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
-@nonamespace P02_named = named_ss(P, [P.u], [P.y])
+@nonamespace P02_named = named_ss(P; x, u=[P.u], y=[P.y])
 @test P02_named.x_names == [Symbol("x1(t)")]
 @test P02_named.u_names == [Symbol("u(t)")]
 @test P02_named.y_names == [Symbol("y(t)")]
@@ -142,5 +142,4 @@ if isinteractive()
     ##
     plot(sol.t, sol[P.x1]-@nonamespace(sol[fb.u]), lab="qₘ", title="Control error")
     plot!(sol.t, sol[P.x3]-@nonamespace(sol[fb.u]), lab="qₐ")
-
 end
