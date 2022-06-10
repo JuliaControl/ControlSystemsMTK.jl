@@ -30,8 +30,10 @@ using Optim, Optim.LineSearches
 
 export sconnect, feedback, ODESystem, states, observed, named_ss
 
+export ESC
+
 include("ode_system.jl")
 include("symbolic_optimization.jl")
-
+include("extremum_seeking.jl")
 
 end

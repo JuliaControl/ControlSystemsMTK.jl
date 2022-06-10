@@ -11,4 +11,9 @@ using Test
     #     @info "Testing symbolic_opt"
     #     include("test_symbolic_opt.jl")
     # end
+
+    @testset "extremum" begin
+        @info "Testing extremum"
+        include("test_extremum.jl")
+    end
 end
