@@ -99,7 +99,7 @@ P0 = ss(A,B,C,0)
 
 s = tf("s")
 Cv0 = tx * pid(4, 2) * tf(1, [0.01, 1])  #|> ss
-Cp0 = tx * pid(2)    * tf(1, [0.01, 1])  #|> ss
+Cp0 = tx * pid(2, 0) * tf(1, [0.01, 1])  #|> ss
 
 P0i = deepcopy(P0)
 P0i.D .= 1e-8
