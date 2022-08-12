@@ -50,7 +50,7 @@ end
 
 
 """
-    sconnect(input, sys::T; name = Symbol("$(sys.name) with input"))
+    sconnect(input, sys::T; name)
 """
 function sconnect(input, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     T([
@@ -59,7 +59,7 @@ function sconnect(input, sys::T; name=Symbol("$(sys.name) with input")) where T 
 end
 
 """
-    sconnect(input::Function, sys::T; name = Symbol("$(sys.name) with input"))
+    sconnect(input::Function, sys::T; name)
 
 Connect a function `input(t)` to `sys.input`
 """
@@ -72,7 +72,7 @@ function sconnect(input::Function, sys::T; name=Symbol("$(sys.name) with input")
 end
 
 """
-    sconnect(sys1::T, sys2::T; name = Symbol("$(sys1.name)*$(sys2.name)"))
+    sconnect(sys1::T, sys2::T; name)
 
 Connect systems in series, equivalent to `sys2*sys1` or `series(sys1, sys2)` in ControlSystems.jl terminology
 """
@@ -87,7 +87,7 @@ function sconnect(sys1::T, sys2::T; name=Symbol("$(sys1.name)*$(sys2.name)")) wh
 end
 
 """
-    G = ControlSystems.feedback(loopgain::T; name = Symbol("feedback $(loopgain.name)"))
+    G = ControlSystems.feedback(loopgain::T; name)
 
 Form the feedback-interconnection
 \$G = L/(1+L)\$
