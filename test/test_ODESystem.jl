@@ -1,5 +1,6 @@
 using ControlSystemsMTK, ControlSystems, ModelingToolkit, OrdinaryDiffEq, RobustAndOptimalControl
-
+import ModelingToolkitStandardLibrary.Blocks as Blocks
+conn = ModelingToolkit.connect
 ## Test SISO (single input, single output) system
 @parameters t
 
@@ -8,12 +9,13 @@ C0 = pid(kp = 1, ki = 1) * tf(1, [0.01, 1])  |> ss
 
 @named P           = ODESystem(P0)
 @test P isa ODESystem
-@test_broken length(ModelingToolkit.observed(P)) == P.ny
-@test_broken length(ModelingToolkit.controls(P)) == P.nu
+@test_broken length(ModelingToolkit.outputs(P)) == P.ny
+@test_broken length(ModelingToolkit.inputs(P)) == P.nu
 # @named nonlinear_P = sconnect(x->sign(x)*sqrt(abs(x)), P) # apply input-nonlinearity
 @named C           = ODESystem(C0)
 @named loopgain    = sconnect(C, P)
-@named fb          = feedback(loopgain, sin(t))
+@named ref         = Blocks.Sine(frequency=1)
+@named fb          = feedback(loopgain, ref)
 fb           = structural_simplify(fb)
 
 @test length(states(P)) == 3 # 1 + u + y
@@ -22,7 +24,7 @@ fb           = structural_simplify(fb)
 x0 = Pair[
     # fb.loopgain.nonlinear_P.P.x1 => 1 # a bit inconvenient to specify initial states
     # loopgain.nonlinear_P.P.x1 => 1
-    loopgain.P.x1 => 1
+    loopgain.P.x[1] => 1
     # P.x1 => 1
 ]
 p = Pair[]
@@ -108,27 +110,27 @@ P0i.D .= 1e-8
 @named Fp = ODESystem(inv(P0i[1,1])) # feedforward pos
 @named Cv = ODESystem(Cv0) # vel controller
 @named Cp = ODESystem(Cp0) # pos controller
-fb = let ref0 = 0.2sin(t), disturbance = 100sign(t-10)
-    @variables u(t) y(t) 
+fb = let ref0 = Blocks.Sine(amplitude=0.2, frequency=1, name=:r), disturbance = Blocks.Step(height=100, start_time=10, name=:d)
+    @named input = Blocks.RealInput()
+    @named output = Blocks.RealOutput()
     Dₜ = Differential(t)
     fb = ODESystem([
-        u    ~ ref0 # The input 
-        ref0 ~ RF.u # filter position reference
-        expand_derivatives(Dₜ(ref0) ~ RFv.u) # Filter vel reference
-        RF.y - P.y1 ~ Cp.u # pos controller input is pos error
-        disturbance ~ P.u2 # disturbance enters on arm acceleration
-        Cp.y + RFv.y - P.y2 ~ Cv.u # vel controller input is vel error + pos controller output
-        Cv.y + Fp.y ~ P.u1 # robot input is vel controller output and trq ff
-        y ~ P.y1 # output is robot motor pos
-        RF.y ~ Fp.u
-    ], t; systems=[P, Cv, Cp, Fp, RF, RFv], name=:feedback)
+        conn(ref0.output, RF.input) # filter position reference
+        expand_derivatives(Dₜ(ref0.output.u) ~ RFv.input.u) # Filter vel reference
+        RF.output.u - P.output.u[1] ~ Cp.input.u # pos controller input is pos error
+        disturbance.output.u ~ P.input.u[2] # disturbance enters on arm acceleration
+        Cp.output.u + RFv.output.u - P.output.u[2] ~ Cv.input.u # vel controller input is vel error + pos controller output
+        Cv.output.u + Fp.output.u ~ P.input.u[1] # robot input is vel controller output and trq ff
+        output.u ~ P.output.u[1] # output is robot motor pos
+        RF.output.u ~ Fp.input.u
+    ], t; systems=[P, Cv, Cp, Fp, RF, RFv, input, output, ref0, disturbance], name=:feedback)
 end
 simplified_sys = structural_simplify(fb)
 
 
 x0 = Pair[
-    P.x1 => 0.0
-    P.x3 => 0.0
+    P.x[1] => 0.0
+    P.x[3] => 0.0
 ]
 p = Pair[]
 
@@ -137,9 +139,9 @@ sol = solve(prob, OrdinaryDiffEq.Rodas5(), rtol=1e-8, atol=1e-8, saveat=0:0.01:2
 if isinteractive()
     @show sol.retcode
     plot(sol, layout=length(states(simplified_sys))+1)
-    plot!(sol.t, sol[P.x1]-sol[P.x3], sp=12, lab="Δq")
+    plot!(sol.t, sol[P.x[1]]-sol[P.x[3]], sp=12, lab="Δq")
 
     ##
-    plot(sol.t, sol[P.x1]-@nonamespace(sol[fb.u]), lab="qₘ", title="Control error")
-    plot!(sol.t, sol[P.x3]-@nonamespace(sol[fb.u]), lab="qₐ")
+    plot(sol.t, sol[P.x[1]]-sol[fb.r.output.u], lab="qₘ", title="Control error")
+    plot!(sol.t, sol[P.x[3]]-sol[fb.r.output.u], lab="qₐ")
 end

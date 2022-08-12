@@ -1,3 +1,6 @@
+import ModelingToolkitStandardLibrary.Blocks as Blocks
+conn = ModelingToolkit.connect
+t = Blocks.t
 ModelingToolkit.ODESystem(sys::LTISystem; kwargs...) = ODESystem(ss(sys); kwargs...)
 
 """
@@ -14,7 +17,7 @@ The arguments below are automatically set if the system is a `NamedStateSpace`.
 - `u_names`: A vector of symbols with input names. 
 - `y_names`: A vector of symbols with output names. 
 """
-function system_creator(constructor, sys::AbstractStateSpace;
+function ModelingToolkit.ODESystem(sys::AbstractStateSpace;
     name::Symbol,
     x0 = zeros(sys.nx),
     x_names = [Symbol("x$i") for i in 1:sys.nx],
@@ -23,40 +26,27 @@ function system_creator(constructor, sys::AbstractStateSpace;
 )
     A,B,C,D = ssdata(sys)
     nx,ny,nu = sys.nx, sys.ny, sys.nu
-    @parameters t
     x = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in x_names]
     u = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in u_names] # TODO: should be input=true
     y = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in y_names] # TODO: should be output=true
-    # @show typeof(u)
-    # u = map(u) do u
-    #     ModelingToolkit.toinput(u.val).f
-    # end
-    # y = map(y) do y
-    #     ModelingToolkit.tooutput(y.val).f
-    # end
-    Dₜ = if ControlSystems.isdiscrete(sys)
-        # A = A - I # Due to difference operator instead of time shift operator https://github.com/SciML/ModelingToolkit.jl/issues/1307
-        # NOTE: The difference operator appears to be a time-shift operator
-        Difference(t; dt=sys.Ts)
-    else
-        Differential(t)
+    u = map(u) do u
+        ModelingToolkit.setmetadata(u, ModelingToolkit.VariableInput, true)
     end
-    eqs = [
-        Dₜ.(x) .~ A*x .+ B*u
-        y      .~ C*x .+ D*u
-        ]
-    constructor(eqs, t; name, defaults = Dict([x .=> x0; y .=> C*x0; u .=> 0])) # NOTE: the initial values for y and u are required since `structural_simplify` fails on discrete systems
+    y = map(y) do y
+        ModelingToolkit.setmetadata(y, ModelingToolkit.VariableOutput, true)
+    end
+    if ControlSystems.isdiscrete(sys)
+        error("Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time")
+    else
+    end
+    osys = Blocks.StateSpace(ssdata(sys)...; x_start = x0, name)
+    # @unpack x, u, y = osys
+    # compose(
+    #     ODESystem([], t, )
+    # )
 end
 
-function ModelingToolkit.ODESystem(sys::AbstractStateSpace, args...; kwargs...)
-    system_creator(ODESystem, sys, args...; kwargs...)
-end
-
-function ModelingToolkit.DiscreteSystem(sys::AbstractStateSpace{<:Discrete}, args...; kwargs...)
-    system_creator(DiscreteSystem, sys, args...; kwargs...)
-end
-
-function ModelingToolkit.ODESystem(sys::NamedStateSpace{Continuous};
+function ModelingToolkit.ODESystem(sys::NamedStateSpace;
     name::Symbol,
     kwargs...
 )
@@ -64,26 +54,14 @@ function ModelingToolkit.ODESystem(sys::NamedStateSpace{Continuous};
     ODESystem(sys.sys; x_names, u_names, y_names, name, kwargs...)
 end
 
-function ModelingToolkit.ODESystem(sys::NamedStateSpace{<:Discrete};
-    name::Symbol,
-    kwargs...
-)
-    @unpack x_names, u_names, y_names = sys
-    ODESystem(sys.sys; x_names, u_names, y_names, name, kwargs...)
-end
 
 function sconnect(input, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    @parameters t
-    @variables u(t) y(t)
     T([
-        u ~ input
-        sys.u ~ input
-        y ~ sys.y
-    ], t; systems=[sys], name)
+        conn(input.output, sys.input)
+    ], t; systems=[sys, input], name)
 end
 
 function sconnect(input::Function, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    @parameters t
     @variables u(t) y(t)
     T([
         sys.u ~ input(u)
@@ -93,35 +71,25 @@ end
 
 "connect output of one sys to input of other"
 function sconnect(sys1::T, sys2::T; name=Symbol("$(sys1.name)*$(sys2.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    @parameters t
-    @variables u(t) y(t)
+    @named output = Blocks.RealOutput() # TODO: missing size
+    @named input = Blocks.RealInput() # TODO: missing size
     T([
-        u ~ sys1.u
-        sys1.y ~ sys2.u
-        y ~ sys2.y
-    ], t; systems=[sys1, sys2], name)
+        conn(input, sys2.input)
+        conn(output, sys1.output)
+        conn(sys2.output, sys1.input)
+    ], t; name, systems=[sys1, sys2, output, input])
 end
 
 "form feedback interconnection, i.e., input is `r-y`"
-function ControlSystems.feedback(loopgain::T, ref; name=Symbol("feedback $(loopgain.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    @parameters t
-    @variables u(t) y(t)
+function ControlSystems.feedback(loopgain::T, ref::T; name=Symbol("feedback $(loopgain.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
+    add = Blocks.Add(k1=1, k2=-1, name=:feedback)
     T([
-        u ~ ref
-        ref - loopgain.y ~ loopgain.u
-        y ~ loopgain.y
-    ], t; systems=[loopgain], name)
+        conn(ref.output, add.input1)
+        conn(loopgain.output, add.input2)
+        conn(add.output, loopgain.input)
+    ], t; systems=[loopgain, add, ref], name)
 end
 
-function ControlSystems.feedback(loopgain::T, ref::T; name=Symbol("feedback $(loopgain.name)*$(ref.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    @parameters t
-    @variables u(t) y(t)
-    T([
-        u ~ ref.u
-        ref.y - loopgain.y ~ loopgain.u
-        y ~ loopgain.y
-    ], t; systems=[loopgain, ref], name)
-end
 
 numeric(x::Num) = x.val
 
