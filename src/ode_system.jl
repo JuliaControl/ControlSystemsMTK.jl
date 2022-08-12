@@ -105,6 +105,19 @@ function ControlSystems.feedback(loopgain::T; name=Symbol("feedback $(loopgain.n
         conn(add.output, loopgain.input)
     ], t; systems=[input, output, loopgain, add], name)
 end
+
+function Base.:(*)(s1::T, s2::T) where T <: ModelingToolkit.AbstractTimeDependentSystem
+    name = Symbol(string(s1.name)*"_"*string(s2.name))
+    @named input = Blocks.RealInput()
+    @named output = Blocks.RealOutput()
+    eqs = [
+        conn(s1.input, s2.output)
+        output.u ~ s1.output.u
+    ]
+    if any(s.name == :input for s in ref.systems)
+        push!(eqs, input.u ~ s2.input.u)
+    end
+    T(eqs, t; systems=[input, output, s1, s2], name)
 end
 
 

@@ -15,21 +15,17 @@ C0 = pid(1, 1) * tf(1, [0.01, 1])  |> ss
 @named C           = ODESystem(C0)
 @named loopgain    = sconnect(C, P)
 @named ref         = Blocks.Sine(frequency=1)
-@named fb          = feedback(loopgain, ref)
-fb           = structural_simplify(fb)
+fb          = feedback(loopgain, name=:fb)*ref
+fb          = structural_simplify(fb)
 
 @test length(states(P)) == 3 # 1 + u + y
 @test length(states(C)) == 4 # 2 + u + y
 
 x0 = Pair[
-    # fb.loopgain.nonlinear_P.P.x1 => 1 # a bit inconvenient to specify initial states
-    # loopgain.nonlinear_P.P.x1 => 1
     loopgain.P.x[1] => 1
-    # P.x1 => 1
 ]
-p = Pair[]
 
-prob = ODEProblem(fb, x0, (0.0, 10.0), p)
+prob = ODEProblem(fb, x0, (0.0, 10.0))
 sol = solve(prob, Rodas5())   
 isinteractive() && plot(sol)
 
