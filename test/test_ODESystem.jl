@@ -5,7 +5,7 @@ conn = ModelingToolkit.connect
 @parameters t
 
 P0 = tf(1.0, [1, 1])                         |> ss
-C0 = pid(kp = 1, ki = 1) * tf(1, [0.01, 1])  |> ss
+C0 = pid(1, 1) * tf(1, [0.01, 1])  |> ss
 
 @named P           = ODESystem(P0)
 @test P isa ODESystem
@@ -98,8 +98,8 @@ isinteractive() && @info "Resonance frequency: $((imag.(eigvals(A)) ./ (2π)))"
 P0 = ss(A,B,C,0)
 
 s = tf("s")
-Cv0 = tx * pid(kp = 4, ki = 2) * tf(1, [0.01, 1])  #|> ss
-Cp0 = tx * pid(kp = 2)         * tf(1, [0.01, 1])  #|> ss
+Cv0 = tx * pid(4, 2) * tf(1, [0.01, 1])  #|> ss
+Cp0 = tx * pid(2)    * tf(1, [0.01, 1])  #|> ss
 
 P0i = deepcopy(P0)
 P0i.D .= 1e-8
