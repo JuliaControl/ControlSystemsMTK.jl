@@ -38,10 +38,6 @@ function ModelingToolkit.ODESystem(sys::AbstractStateSpace;
     end
 
     osys = Blocks.StateSpace(ssdata(sys)...; x_start = x0, name)
-    # @unpack x, u, y = osys
-    # compose(
-    #     ODESystem([], t, )
-    # )
 end
 
 function ModelingToolkit.ODESystem(sys::NamedStateSpace;
@@ -53,21 +49,33 @@ function ModelingToolkit.ODESystem(sys::NamedStateSpace;
 end
 
 
+"""
+    sconnect(input, sys::T; name = Symbol("$(sys.name) with input"))
+"""
 function sconnect(input, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     T([
         conn(input.output, sys.input)
     ], t; systems=[sys, input], name)
 end
 
+"""
+    sconnect(input::Function, sys::T; name = Symbol("$(sys.name) with input"))
+
+Connect a function `input(t)` to `sys.input`
+"""
 function sconnect(input::Function, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    @variables u(t) y(t)
+    @named output = Blocks.RealOutput()
     T([
-        sys.u ~ input(u)
-        y ~ sys.y
-    ], t; systems=[sys], name)
+        sys.input.u ~ input(t)
+        output.u ~ sys.output.u
+    ], t; systems=[sys, output], name)
 end
 
-"connect output of one sys to input of other"
+"""
+    sconnect(sys1::T, sys2::T; name = Symbol("$(sys1.name)*$(sys2.name)"))
+
+Connect systems in series, equivalent to `sys2*sys1` or `series(sys1, sys2)` in ControlSystems.jl terminology
+"""
 function sconnect(sys1::T, sys2::T; name=Symbol("$(sys1.name)*$(sys2.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     @named output = Blocks.RealOutput() # TODO: missing size
     @named input = Blocks.RealInput() # TODO: missing size
@@ -78,14 +86,25 @@ function sconnect(sys1::T, sys2::T; name=Symbol("$(sys1.name)*$(sys2.name)")) wh
     ], t; name, systems=[sys1, sys2, output, input])
 end
 
-"form feedback interconnection, i.e., input is `r-y`"
-function ControlSystems.feedback(loopgain::T, ref::T; name=Symbol("feedback $(loopgain.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
+"""
+    G = ControlSystems.feedback(loopgain::T; name = Symbol("feedback $(loopgain.name)"))
+
+Form the feedback-interconnection
+\$G = L/(1+L)\$
+
+The system `G` will be a new system with `input` and `output` connectors.
+"""
+function ControlSystems.feedback(loopgain::T; name=Symbol("feedback $(loopgain.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
     add = Blocks.Add(k1=1, k2=-1, name=:feedback)
+    @named input = Blocks.RealInput()
+    @named output = Blocks.RealOutput()
     T([
-        conn(ref.output, add.input1)
+        input.u ~ add.input1.u
+        output.u ~ loopgain.output.u
         conn(loopgain.output, add.input2)
         conn(add.output, loopgain.input)
-    ], t; systems=[loopgain, add, ref], name)
+    ], t; systems=[input, output, loopgain, add], name)
+end
 end
 
 
