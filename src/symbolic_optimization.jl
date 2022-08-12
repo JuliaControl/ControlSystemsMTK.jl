@@ -14,7 +14,7 @@ function get_funs(Ps, vars)
     all(v ∈ svars for v in found_vars) || error("Found some variables that were not listed in vars. Found vars = $found_vars, expected vars: $svars")
     # all(any(isequal(v, v2) for v2 in [vars; s]) for v in found_vars) || error("Found some variables that were not listed in vars. Found vars = $found_vars")
     @info "Building functions"
-    funs = [Symbolics.build_function(n, s, vars...; expression=Val(false))[1] for n in nums] # the first element in the tuple is out-of-place. If n is scalar, only a single function is returned.
+    funs = [Symbolics.build_function(n, s, vars...; expression=Val(false)) for n in nums] # the first element in the tuple is out-of-place. If n is scalar, only a single function is returned.
 end
 
 

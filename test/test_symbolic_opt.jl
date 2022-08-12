@@ -1,3 +1,4 @@
+using ControlSystems, ControlSystemsMTK, ModelingToolkit
 function tsmmv(J0, J1, k0, k1, c0, c1, c2)
     A = [
         0 1 0 0 0 0

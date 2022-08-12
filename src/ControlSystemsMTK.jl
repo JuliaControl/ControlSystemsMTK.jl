@@ -28,9 +28,10 @@ using ModelingToolkit.Symbolics: jacobian, solve_for
 using UnPack
 using Optim, Optim.LineSearches
 
+using SymbolicControlSystems
+
 export sconnect, feedback, ODESystem, states, observed, named_ss
 
-export ESC, PIESC
 
 include("ode_system.jl")
 include("symbolic_optimization.jl")
