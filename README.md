@@ -8,7 +8,7 @@ An experimental interface between [ControlSystems.jl](https://github.com/JuliaCo
 
 
 ## From ControlSystems to ModelingToolkit
-Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSystems into the corresponding `ModelingToolkitStandardLibrary.Blocks.StateSpace`. If `sys` is a named statespace object, the names will be retained in the `ODESystem`.
+Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSystems into the corresponding [`ModelingToolkitStandardLibrary.Blocks.StateSpace`](http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace). If `sys` is a named statespace object, the names will be retained in the `ODESystem`.
 
 ### Example:
 
@@ -91,4 +91,11 @@ D =
  0.0
 
 Continuous-time state-space model
+```
+
+ModelingToolkit tends to give weird names to states etc., to access variables easily, `named_ss` [implements prefix matching](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), so that you can access the state `x[1](t)` by `P02_named.x`:
+```julia
+julia> P02_named.x
+1-element Vector{Symbol}:
+ Symbol("x[1](t)")
 ```
