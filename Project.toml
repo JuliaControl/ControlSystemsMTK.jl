@@ -20,6 +20,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 ControlSystemIdentification = "2"
 ControlSystems = "1"
 ModelingToolkit = "8.18"
+SymbolicControlSystems = "0.1"
 julia = "1.6"
 
 [extras]
