@@ -17,19 +17,22 @@ The arguments below are automatically set if the system is a `NamedStateSpace`.
 - `u_names`: A vector of symbols with input names. 
 - `y_names`: A vector of symbols with output names. 
 """
-function ModelingToolkit.ODESystem(sys::AbstractStateSpace;
+function ModelingToolkit.ODESystem(
+    sys::AbstractStateSpace;
     name::Symbol,
     x0 = zeros(sys.nx),
-    x_names = [Symbol("x$i") for i in 1:sys.nx],
-    u_names = sys.nu == 1 ? [:u] : [Symbol("u$i") for i in 1:sys.nu],
-    y_names = sys.ny == 1 ? [:y] : [Symbol("y$i") for i in 1:sys.ny],
+    x_names = [Symbol("x$i") for i = 1:sys.nx],
+    u_names = sys.nu == 1 ? [:u] : [Symbol("u$i") for i = 1:sys.nu],
+    y_names = sys.ny == 1 ? [:y] : [Symbol("y$i") for i = 1:sys.ny],
 )
-    ControlSystems.isdiscrete(sys) && error("Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time")
-    A,B,C,D = ssdata(sys)
-    nx,ny,nu = sys.nx, sys.ny, sys.nu
-    x = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in x_names]
-    u = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in u_names]
-    y = [Num(Symbolics.variable(name; T=FnType{Tuple{Any},Real}))(t) for name in y_names]
+    ControlSystems.isdiscrete(sys) && error(
+        "Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time",
+    )
+    A, B, C, D = ssdata(sys)
+    nx, ny, nu = sys.nx, sys.ny, sys.nu
+    x = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in x_names]
+    u = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in u_names]
+    y = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in y_names]
     u = map(u) do u
         ModelingToolkit.setmetadata(u, ModelingToolkit.VariableInput, true)
     end
@@ -40,10 +43,7 @@ function ModelingToolkit.ODESystem(sys::AbstractStateSpace;
     osys = Blocks.StateSpace(ssdata(sys)...; x_start = x0, name)
 end
 
-function ModelingToolkit.ODESystem(sys::NamedStateSpace;
-    name::Symbol,
-    kwargs...
-)
+function ModelingToolkit.ODESystem(sys::NamedStateSpace; name::Symbol, kwargs...)
     @unpack x_names, u_names, y_names = sys
     ODESystem(sys.sys; x_names, u_names, y_names, name, kwargs...)
 end
@@ -52,10 +52,12 @@ end
 """
     sconnect(input, sys::T; name)
 """
-function sconnect(input, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    T([
-        conn(input.output, sys.input)
-    ], t; systems=[sys, input], name)
+function sconnect(
+    input,
+    sys::T;
+    name = Symbol("$(sys.name) with input"),
+) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
+    T([conn(input.output, sys.input)], t; systems = [sys, input], name)
 end
 
 """
@@ -63,12 +65,21 @@ end
 
 Connect a function `input(t)` to `sys.input`
 """
-function sconnect(input::Function, sys::T; name=Symbol("$(sys.name) with input")) where T <: ModelingToolkit.AbstractTimeDependentSystem
+function sconnect(
+    input::Function,
+    sys::T;
+    name = Symbol("$(sys.name) with input"),
+) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
     @named output = Blocks.RealOutput()
-    T([
-        sys.input.u ~ input(t)
-        output.u ~ sys.output.u
-    ], t; systems=[sys, output], name)
+    T(
+        [
+            sys.input.u ~ input(t)
+            output.u ~ sys.output.u
+        ],
+        t;
+        systems = [sys, output],
+        name,
+    )
 end
 
 """
@@ -76,14 +87,23 @@ end
 
 Connect systems in series, equivalent to `sys2*sys1` or `series(sys1, sys2)` in ControlSystems.jl terminology
 """
-function sconnect(sys1::T, sys2::T; name=Symbol("$(sys1.name)*$(sys2.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
+function sconnect(
+    sys1::T,
+    sys2::T;
+    name = Symbol("$(sys1.name)*$(sys2.name)"),
+) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
     @named output = Blocks.RealOutput() # TODO: missing size
     @named input = Blocks.RealInput() # TODO: missing size
-    T([
-        conn(input, sys2.input)
-        conn(output, sys1.output)
-        conn(sys2.output, sys1.input)
-    ], t; name, systems=[sys1, sys2, output, input])
+    T(
+        [
+            conn(input, sys2.input)
+            conn(output, sys1.output)
+            conn(sys2.output, sys1.input)
+        ],
+        t;
+        name,
+        systems = [sys1, sys2, output, input],
+    )
 end
 
 """
@@ -94,27 +114,35 @@ Form the feedback-interconnection
 
 The system `G` will be a new system with `input` and `output` connectors.
 """
-function ControlSystems.feedback(loopgain::T; name=Symbol("feedback $(loopgain.name)")) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    add = Blocks.Add(k1=1, k2=-1, name=:feedback)
+function ControlSystems.feedback(
+    loopgain::T;
+    name = Symbol("feedback $(loopgain.name)"),
+) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
+    add = Blocks.Add(k1 = 1, k2 = -1, name = :feedback)
     @named input = Blocks.RealInput()
     @named output = Blocks.RealOutput()
-    T([
-        input.u ~ add.input1.u
-        output.u ~ loopgain.output.u
-        conn(loopgain.output, add.input2)
-        conn(add.output, loopgain.input)
-    ], t; systems=[input, output, loopgain, add], name)
+    T(
+        [
+            input.u ~ add.input1.u
+            output.u ~ loopgain.output.u
+            conn(loopgain.output, add.input2)
+            conn(add.output, loopgain.input)
+        ],
+        t;
+        systems = [input, output, loopgain, add],
+        name,
+    )
 end
 
-function Base.:(*)(s1::T, s2::T) where T <: ModelingToolkit.AbstractTimeDependentSystem
-    name = Symbol(string(s1.name)*"_"*string(s2.name))
+function Base.:(*)(s1::T, s2::T) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
+    name = Symbol(string(s1.name) * "_" * string(s2.name))
     @named input = Blocks.RealInput()
     @named output = Blocks.RealOutput()
     eqs = [
         conn(s1.input, s2.output)
         output.u ~ s1.output.u
     ]
-    systems=[output, s1, s2]
+    systems = [output, s1, s2]
     if any(s.name == :input for s in s2.systems)
         push!(eqs, input.u ~ s2.input.u)
         push!(systems, input)
@@ -126,12 +154,16 @@ end
 numeric(x::Num) = x.val
 
 
-function ControlSystems.ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs)
+function ControlSystems.ss(
+    sys::ModelingToolkit.AbstractTimeDependentSystem,
+    inputs,
+    outputs,
+)
     named_ss(sys, inputs, outputs).sys # just discard the names
 end
 
-inputs(sys) = filter(s->ModelingToolkit.isinput(s), states(sys))
-outputs(sys) = filter(s->ModelingToolkit.isoutput(s), states(sys))
+inputs(sys) = filter(s -> ModelingToolkit.isinput(s), states(sys))
+outputs(sys) = filter(s -> ModelingToolkit.isoutput(s), states(sys))
 
 """
     RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)
@@ -140,7 +172,12 @@ Convert an `ODESystem` to a `NamedStateSpace`. `inputs, outputs` are vectors of 
 
 $(@doc(ModelingToolkit.linearize))
 """
-function RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)
+function RobustAndOptimalControl.named_ss(
+    sys::ModelingToolkit.AbstractTimeDependentSystem,
+    inputs,
+    outputs;
+    kwargs...,
+)
 
     inputs = map(inputs) do inp
         if inp isa ODESystem
@@ -168,5 +205,10 @@ function RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDepen
     end
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
     symstr(x) = Symbol(string(x))
-    named_ss(ss(matrices...); x=symstr.(states(ssys)), u=symstr.(inputs), y=symstr.(outputs))
+    named_ss(
+        ss(matrices...);
+        x = symstr.(states(ssys)),
+        u = symstr.(inputs),
+        y = symstr.(outputs),
+    )
 end
