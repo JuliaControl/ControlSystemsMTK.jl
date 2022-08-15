@@ -81,7 +81,8 @@ A = [
 B  = [0, 1 / Jm, 0, 0]
 Bd = [0, 0, 0, 1 / Ja]
 B  = [B Bd]
-C  = [1 0 0 00 1 0 0]
+C  = [1 0 0 0
+      0 1 0 0]
 
 isinteractive() && @info "Resonance frequency: $((imag.(eigvals(A)) ./ (2π)))"
 
