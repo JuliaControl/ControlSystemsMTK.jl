@@ -114,10 +114,12 @@ function Base.:(*)(s1::T, s2::T) where T <: ModelingToolkit.AbstractTimeDependen
         conn(s1.input, s2.output)
         output.u ~ s1.output.u
     ]
-    if any(s.name == :input for s in ref.systems)
+    systems=[output, s1, s2]
+    if any(s.name == :input for s in s2.systems)
         push!(eqs, input.u ~ s2.input.u)
+        push!(systems, input)
     end
-    T(eqs, t; systems=[input, output, s1, s2], name)
+    T(eqs, t; systems, name)
 end
 
 
