@@ -5,8 +5,8 @@
 
 An experimental interface between [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) and [ModelingToolkit.jl](https://github.com/SciML/ModelingToolkit.jl).
 
-See the video below, at 17:30, for an example of using COntrolSystems and ModelingToolkit together
-<iframe width="560" height="315" src="https://www.youtube.com/embed/favQKOyyx4o" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+See the video below, at 17:30, for an example of using ControlSystems and ModelingToolkit together
+[![CS and MTK on youtube](https://img.youtube.com/vi/favQKOyyx4o/0.jpg)](https://www.youtube.com/watch?v=favQKOyyx4o)
 
 
 ## From ControlSystems to ModelingToolkit
