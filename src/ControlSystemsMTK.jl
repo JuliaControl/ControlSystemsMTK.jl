@@ -16,13 +16,12 @@ A third idea: just use named systems with named indexing to obtain any system yo
 
 =#
 using LinearAlgebra
-using ModelingToolkit, ControlSystems
-using ControlSystems: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
+using ModelingToolkit, ControlSystemsBase
+using ControlSystemsBase: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
 using ControlSystemIdentification
 using RobustAndOptimalControl
 import ModelingToolkit: ODESystem, FnType, Symbolics
 using ModelingToolkit: states, observed, isdifferential
-using OrdinaryDiffEq
 using ModelingToolkit.Symbolics
 using ModelingToolkit.Symbolics: jacobian, solve_for
 using UnPack
