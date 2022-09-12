@@ -125,7 +125,7 @@ end
 
 function enforce_zero_noD!(P, ω)
     A, B, C, D = ssdata(P)
-    Y = ControlSystems.isdiscrete(P) ? (cis(ω * P.Ts) * I - A) \ B : (ω * I - A) \ B
+    Y = ControlSystemsBase.isdiscrete(P) ? (cis(ω * P.Ts) * I - A) \ B : (ω * I - A) \ B
     X = C # dcgain = X*Y
     # find smalles dX such that (X + dX)*Y = 0
     # dX*Y = -X*Y

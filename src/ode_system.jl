@@ -25,7 +25,7 @@ function ModelingToolkit.ODESystem(
     u_names = sys.nu == 1 ? [:u] : [Symbol("u$i") for i = 1:sys.nu],
     y_names = sys.ny == 1 ? [:y] : [Symbol("y$i") for i = 1:sys.ny],
 )
-    ControlSystems.isdiscrete(sys) && error(
+    ControlSystemsBase.isdiscrete(sys) && error(
         "Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time",
     )
     A, B, C, D = ssdata(sys)
@@ -107,14 +107,14 @@ function sconnect(
 end
 
 """
-    G = ControlSystems.feedback(loopgain::T; name)
+    G = ControlSystemsBase.feedback(loopgain::T; name)
 
 Form the feedback-interconnection
 \$G = L/(1+L)\$
 
 The system `G` will be a new system with `input` and `output` connectors.
 """
-function ControlSystems.feedback(
+function ControlSystemsBase.feedback(
     loopgain::T;
     name = Symbol("feedback $(loopgain.name)"),
 ) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
@@ -154,7 +154,7 @@ end
 numeric(x::Num) = x.val
 
 
-function ControlSystems.ss(
+function ControlSystemsBase.ss(
     sys::ModelingToolkit.AbstractTimeDependentSystem,
     inputs,
     outputs,
@@ -205,10 +205,15 @@ function RobustAndOptimalControl.named_ss(
     end
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
     symstr(x) = Symbol(string(x))
+    unames = symstr.(inputs)
+    if size(matrices.B, 2) == 2length(inputs)
+         # This indicates that input derivatives are present
+         unames = [unames; Symbol.("der_" .* string.(unames))]
+    end
     named_ss(
         ss(matrices...);
         x = symstr.(states(ssys)),
-        u = symstr.(inputs),
+        u = unames,
         y = symstr.(outputs),
     )
 end

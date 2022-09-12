@@ -1,5 +1,5 @@
 using ControlSystemsMTK,
-    ControlSystems, ModelingToolkit, OrdinaryDiffEq, RobustAndOptimalControl
+    ControlSystemsBase, ModelingToolkit, OrdinaryDiffEq, RobustAndOptimalControl
 import ModelingToolkitStandardLibrary.Blocks as Blocks
 conn = ModelingToolkit.connect
 ## Test SISO (single input, single output) system
@@ -137,7 +137,7 @@ x0 = Pair[
 p = Pair[]
 
 prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), p, jac = true)
-sol = solve(prob, OrdinaryDiffEq.Rodas5(), rtol = 1e-8, atol = 1e-8, saveat = 0:0.01:20)
+sol = solve(prob, OrdinaryDiffEq.Rodas5(), saveat = 0:0.01:20)
 if isinteractive()
     @show sol.retcode
     plot(sol, layout = length(states(simplified_sys)) + 1)
