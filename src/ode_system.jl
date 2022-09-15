@@ -206,12 +206,31 @@ function RobustAndOptimalControl.named_ss(
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
     symstr(x) = Symbol(string(x))
     unames = symstr.(inputs)
-    if size(matrices.B, 2) == 2length(inputs)
+    nu = length(inputs)
+    ny = length(outputs)
+    if size(matrices.B, 2) == 2nu
+        nx = size(matrices.A, 1)
          # This indicates that input derivatives are present
-         unames = [unames; Symbol.("der_" .* string.(unames))]
+        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end])))
+        B̄ = matrices.B[:, duinds .+ nu]
+        ndu = length(duinds)
+        B = matrices.B[:, 1:nu]
+        Iu = duinds .== (1:nu)'
+        E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
+
+        Ae = cat(matrices.A, -I(ndu), dims=(1,2))
+        Be = [B; Iu]
+        Ce = [matrices.C zeros(ny, ndu)]
+        De = matrices.D[:, 1:nu]
+        dsys = dss(Ae, E, Be, Ce, De)
+        sys = ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
+        # unames = [unames; Symbol.("der_" .* string.(unames))]
+        # sys = ss(matrices...)
+    else
+        sys = ss(matrices...)
     end
     named_ss(
-        ss(matrices...);
+        sys;
         x = symstr.(states(ssys)),
         u = unames,
         y = symstr.(outputs),
