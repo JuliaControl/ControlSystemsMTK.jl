@@ -101,3 +101,26 @@ julia> P02_named.x
 1-element Vector{Symbol}:
  Symbol("x[1](t)")
 ```
+
+
+### Internals: Transformation of non-proper models to proper statespace form
+For some models, ModelingToolkit will fail to produce a proper statespace model (a non-proper model is differentiating the inputs, i.e., it has a numerator degree higher than the denominator degree if represented as a transfer function) when calling `linearize`. For such models, given on the form
+$$
+\dot x = Ax + Bu + \bar B \dot u
+$$
+we create the following augmented descriptor model
+$$
+\begin{aligned}
+sX &= Ax + BU + s\bar B U \\
+[X_u = U]\\
+s(X - \bar B X_u) = AX + BU \leftrightarrow \\
+s \begin{bmatrix}I & -\bar B \\ 0 & 0 \end{bmatrix} = 
+\begin{bmatrix} A & 0 \\ 0 & -I\end{bmatrix}
+\begin{bmatrix}X \\ X_u \end{bmatrix} + 
+\begin{bmatrix} B \\ I_u\end{bmatrix} U
+\end{aligned}
+$$
+where $X_u$ is a new algebraic state variable and $I_u$ is a selector matrix that picks out the differentiated inputs appearing in $\dot u$ (if all inputs appear, $I_u = I$).
+
+This model may be converted to a proper statespace model (if the system is indeed proper) using `DescriptorSystems.dss2ss`.
+All of this is handled automatically by `named_ss(sys)`.
