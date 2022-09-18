@@ -47,16 +47,13 @@ x = states(C)
 @nonamespace C02 = named_ss(C, [C.input], [C.output])
 @test ss(C02) == C0
 
-# Now try do the same with the feedback interconnection. This fails, I cannot figure out how to provide the input I want to linearize w.r.t. to. Below is an attempt by creating an input variable `r`, but that causes `structural_simplify` to complain.
-# @register r(t)
-# @register rfun(t)
-# @named fbu = feedback(loopgain, rfun(t))
-# fbu = structural_simplify(fbu)
-# fbus = states(fbu)
-# fb2 = @nonamespace ss(fbu, rfun(t), fbu.y)
-# feedback(P0*C0) # fb2 should be similar to this feeback interconnection calculated by ControlSystems
 
-# @test tf(feedback(P0*C0)) ≈ tf(fb2)
+## Back again for a complete round trip, test that ODESystem get correct names
+@named P2 = ODESystem(P02_named)
+@test Set(states(P2)) == Set(states(P))
+@test Set(ModelingToolkit.inputs(P2)) == Set(ModelingToolkit.inputs(P))
+@test Set(ModelingToolkit.outputs(P2)) == Set(ModelingToolkit.outputs(P))
+
 
 
 

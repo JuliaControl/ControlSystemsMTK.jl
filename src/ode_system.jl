@@ -21,18 +21,18 @@ function ModelingToolkit.ODESystem(
     sys::AbstractStateSpace;
     name::Symbol,
     x0 = zeros(sys.nx),
-    x_names = [Symbol("x$i") for i = 1:sys.nx],
-    u_names = sys.nu == 1 ? [:u] : [Symbol("u$i") for i = 1:sys.nu],
-    y_names = sys.ny == 1 ? [:y] : [Symbol("y$i") for i = 1:sys.ny],
+    x = ControlSystemsBase.state_names(sys),
+    u = ControlSystemsBase.input_names(sys),
+    y = ControlSystemsBase.output_names(sys),
 )
     ControlSystemsBase.isdiscrete(sys) && error(
         "Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time",
     )
     A, B, C, D = ssdata(sys)
     nx, ny, nu = sys.nx, sys.ny, sys.nu
-    x = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in x_names]
-    u = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in u_names]
-    y = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in y_names]
+    x = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in x]
+    u = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in u]
+    y = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in y]
     u = map(u) do u
         ModelingToolkit.setmetadata(u, ModelingToolkit.VariableInput, true)
     end
@@ -42,12 +42,6 @@ function ModelingToolkit.ODESystem(
 
     osys = Blocks.StateSpace(ssdata(sys)...; x_start = x0, name)
 end
-
-function ModelingToolkit.ODESystem(sys::NamedStateSpace; name::Symbol, kwargs...)
-    @unpack x_names, u_names, y_names = sys
-    ODESystem(sys.sys; x_names, u_names, y_names, name, kwargs...)
-end
-
 
 """
     sconnect(input, sys::T; name)
