@@ -15,7 +15,7 @@ Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSyste
 ### Example:
 
 ```julia
-julia> using ControlSystemsMTK, ControlSystems, ModelingToolkit, RobustAndOptimalControl
+julia> using ControlSystemsMTK, ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl
 
 julia> P0 = tf(1.0, [1, 1])  |> ss
 StateSpace{Continuous, Float64}
