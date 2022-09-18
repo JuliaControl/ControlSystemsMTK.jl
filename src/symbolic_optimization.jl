@@ -61,100 +61,100 @@ function coeff_cost_freq(
     cost, funs
 end
 
-function coeff_cost_freq(Pd::AbstractVector{<:FRD}, Ps, vars, dist::F = abs2) where {F}
-    funs = get_funs(Ps, vars)
-    local cost
-    logabs(x) = @fastmath log(abs(x))
-    let Pd = Pd, funs = funs # closure bug trick
-        function cost(x::AbstractArray{T}, _ = nothing)::T where {T}
-            any(<=(0), x) && (return T(Inf))
-            c = [zero(T) for _ = 1:nthreads()]
-            for (Pd, symfun) in zip(Pd, funs)
-                freqs = Pd.w
-                for (i, f) in enumerate(freqs) # @threads
-                    freq = complex(0, f)
-                    data_val = Pd.r[i]
-                    model_val = symfun(freq, x...)
-                    c[threadid()] += sum(dist.(logabs.(data_val) .- logabs.(model_val)))
-                end
-            end
-            sum(c) / (length(Pd[1].w) * length(Pd))
-        end
-    end
-    cost, funs
-end
+# function coeff_cost_freq(Pd::AbstractVector{<:FRD}, Ps, vars, dist::F = abs2) where {F}
+#     funs = get_funs(Ps, vars)
+#     local cost
+#     logabs(x) = @fastmath log(abs(x))
+#     let Pd = Pd, funs = funs # closure bug trick
+#         function cost(x::AbstractArray{T}, _ = nothing)::T where {T}
+#             any(<=(0), x) && (return T(Inf))
+#             c = [zero(T) for _ = 1:nthreads()]
+#             for (Pd, symfun) in zip(Pd, funs)
+#                 freqs = Pd.w
+#                 for (i, f) in enumerate(freqs) # @threads
+#                     freq = complex(0, f)
+#                     data_val = Pd.r[i]
+#                     model_val = symfun(freq, x...)
+#                     c[threadid()] += sum(dist.(logabs.(data_val) .- logabs.(model_val)))
+#                 end
+#             end
+#             sum(c) / (length(Pd[1].w) * length(Pd))
+#         end
+#     end
+#     cost, funs
+# end
 
-"""
-    fit_matching(Pd, Ps, freqs)
+# """
+#     fit_matching(Pd, Ps, freqs)
 
-Given a set of systems estimated from data, `Pd`, and a set of symbolic systems `Ps`, find the numerical values of the symbolic parameters that make the two sets of systems agree as well as possible on the set of frequencies `freq`.
-"""
-function fit_matching(
-    Pd,
-    Ps,
-    freqs,
-    vars,
-    x0;
-    solver = ParticleSwarm(),
-    lb,
-    ub,
-    opts = Optim.Options(
-        store_trace       = true,
-        show_trace        = true,
-        show_every        = 100,
-        iterations        = 10000,
-        allow_f_increases = false,
-        time_limit        = 20,
-        g_tol             = 1e-8,
-    ),
-    kwargs...,
-)
-    cost, funs = coeff_cost_freq(Pd, Ps, freqs, vars)
-    @show c0 = cost(x0)
-    isfinite(c0) || error("Non-finite initial cost")
-    @info "Starting optimization"
-    sol = Optim.optimize(x -> cost(exp.(x)), log.(x0), solver, opts)
-    xopt = exp.(sol.minimizer)
-    d = Dict(vars .=> xopt)
-    # fun = OptimizationFunction(cost)
-    # prob = OptimizationProblem(cost, x0; lb, ub, kwargs...)
-    # sol = solve(prob, BBO(), maxiters=100000)
-    # d = Dict(vars .=> sol.u)
-    sort(d, by = string), sol, cost
-end
+# Given a set of systems estimated from data, `Pd`, and a set of symbolic systems `Ps`, find the numerical values of the symbolic parameters that make the two sets of systems agree as well as possible on the set of frequencies `freq`.
+# """
+# function fit_matching(
+#     Pd,
+#     Ps,
+#     freqs,
+#     vars,
+#     x0;
+#     solver = ParticleSwarm(),
+#     lb,
+#     ub,
+#     opts = Optim.Options(
+#         store_trace       = true,
+#         show_trace        = true,
+#         show_every        = 100,
+#         iterations        = 10000,
+#         allow_f_increases = false,
+#         time_limit        = 20,
+#         g_tol             = 1e-8,
+#     ),
+#     kwargs...,
+# )
+#     cost, funs = coeff_cost_freq(Pd, Ps, freqs, vars)
+#     @show c0 = cost(x0)
+#     isfinite(c0) || error("Non-finite initial cost")
+#     @info "Starting optimization"
+#     sol = Optim.optimize(x -> cost(exp.(x)), log.(x0), solver, opts)
+#     xopt = exp.(sol.minimizer)
+#     d = Dict(vars .=> xopt)
+#     # fun = OptimizationFunction(cost)
+#     # prob = OptimizationProblem(cost, x0; lb, ub, kwargs...)
+#     # sol = solve(prob, BBO(), maxiters=100000)
+#     # d = Dict(vars .=> sol.u)
+#     sort(d, by = string), sol, cost
+# end
 
-function enforce_zero_noD!(P, ω)
-    A, B, C, D = ssdata(P)
-    Y = ControlSystemsBase.isdiscrete(P) ? (cis(ω * P.Ts) * I - A) \ B : (ω * I - A) \ B
-    X = C # dcgain = X*Y
-    # find smalles dX such that (X + dX)*Y = 0
-    # dX*Y = -X*Y
-    dX = (-X * Y) * pinv(Y)
-    @show norm(dX)
-    Xo = X + dX
-    Co = Xo
-    # new dc gain = Xo*Y
-    ω == 0 && @assert norm(Xo * Y) < sqrt(eps())
-    P.C .= Co
-    P
-end
-
-
+# function enforce_zero_noD!(P, ω)
+#     A, B, C, D = ssdata(P)
+#     Y = ControlSystemsBase.isdiscrete(P) ? (cis(ω * P.Ts) * I - A) \ B : (ω * I - A) \ B
+#     X = C # dcgain = X*Y
+#     # find smalles dX such that (X + dX)*Y = 0
+#     # dX*Y = -X*Y
+#     dX = (-X * Y) * pinv(Y)
+#     @show norm(dX)
+#     Xo = X + dX
+#     Co = Xo
+#     # new dc gain = Xo*Y
+#     ω == 0 && @assert norm(Xo * Y) < sqrt(eps())
+#     P.C .= Co
+#     P
+# end
 
 
-function fit_timedomain(datas, Ps, vars, x0s; solver = ParticleSwarm(), lb, ub, kwargs...)
-    @info "Starting optimization"
-    opts = Optim.Options(
-        store_trace       = true,
-        show_trace        = true,
-        show_every        = 100,
-        iterations        = 10000,
-        allow_f_increases = false,
-        time_limit        = 20,
-        g_tol             = 1e-8,
-    )
-    sol = Optim.optimize(x -> cost(exp.(x)), log.(x0), solver, opts)
-    xopt = exp.(sol.minimizer)
-    d = Dict(vars .=> xopt)
-end
+
+
+# function fit_timedomain(datas, Ps, vars, x0s; solver = ParticleSwarm(), lb, ub, kwargs...)
+#     @info "Starting optimization"
+#     opts = Optim.Options(
+#         store_trace       = true,
+#         show_trace        = true,
+#         show_every        = 100,
+#         iterations        = 10000,
+#         allow_f_increases = false,
+#         time_limit        = 20,
+#         g_tol             = 1e-8,
+#     )
+#     sol = Optim.optimize(x -> cost(exp.(x)), log.(x0), solver, opts)
+#     xopt = exp.(sol.minimizer)
+#     d = Dict(vars .=> xopt)
+# end
 
