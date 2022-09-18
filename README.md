@@ -108,6 +108,7 @@ For some models, ModelingToolkit will fail to produce a proper statespace model 
 $$\dot x = Ax + Bu + \bar B \dot u$$
 we create the following augmented descriptor model
 ```math
+$$
 \begin{aligned}
 sX &= Ax + BU + s\bar B U \\
 [X_u &= U]\\
@@ -118,7 +119,11 @@ s \begin{bmatrix}I & -\bar B \\ 0 & 0 \end{bmatrix} &=
 \begin{bmatrix} B \\ I_u\end{bmatrix} U \\
 sE &= A_e x_e + B_e u
 \end{aligned}
+$$
 ```
+
+![image](https://user-images.githubusercontent.com/3797491/190910994-e249f95c-d536-4775-a92b-db10b9200bdf.png)
+
 where $X_u$ is a new algebraic state variable and $I_u$ is a selector matrix that picks out the differentiated inputs appearing in $\dot u$ (if all inputs appear, $I_u = I$).
 
 This model may be converted to a proper statespace model (if the system is indeed proper) using `DescriptorSystems.dss2ss`.
