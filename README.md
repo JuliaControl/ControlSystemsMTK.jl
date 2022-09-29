@@ -95,11 +95,9 @@ D =
 Continuous-time state-space model
 ```
 
-ModelingToolkit tends to give weird names to states etc., to access variables easily, `named_ss` [implements prefix matching](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), so that you can access the state `x[1](t)` by `P02_named.x`:
+ModelingToolkit tends to give weird names to inputs and outputs etc., to access variables easily, `named_ss` [implements prefix matching](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), so that you can access the mapping from `input₊u(t)` to `output₊u(t)` by
 ```julia
-julia> P02_named.x
-1-element Vector{Symbol}:
- Symbol("x[1](t)")
+P02_named[:out, :in]
 ```
 
 
@@ -108,7 +106,6 @@ For some models, ModelingToolkit will fail to produce a proper statespace model 
 $$\dot x = Ax + Bu + \bar B \dot u$$
 we create the following augmented descriptor model
 ```math
-$$
 \begin{aligned}
 sX &= Ax + BU + s\bar B U \\
 [X_u &= U]\\
@@ -119,7 +116,6 @@ s \begin{bmatrix}I & -\bar B \\ 0 & 0 \end{bmatrix} &=
 \begin{bmatrix} B \\ I_u\end{bmatrix} U \\
 sE &= A_e x_e + B_e u
 \end{aligned}
-$$
 ```
 
 ![image](https://user-images.githubusercontent.com/3797491/190910994-e249f95c-d536-4775-a92b-db10b9200bdf.png)
