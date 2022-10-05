@@ -230,3 +230,77 @@ function RobustAndOptimalControl.named_ss(
         y = symstr.(outputs),
     )
 end
+
+function ModelingToolkit.get_disturbance_system(dist::ModelingToolkit.DisturbanceModel{<:LTISystem})
+    ControlSystemsBase.issiso(dist.model) || error("Disturbance model must be SISO")
+    Blocks.StateSpace(ssdata(ss(dist.model))..., name=dist.name)
+end
+
+
+"""
+    build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::Vector{Pair})
+
+For a system that has been linearized, assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of simplified system `ssys` accoring to the vector of pairs `costs`.
+
+The motivation for this function is that ModelingToolkit does not guarantee
+- Which states are selected as states after simplification.
+- The order of the states.
+
+The second problem above, the ordering of the states, can be worked around using `reorder_states`, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton needs the linearization (`matrices`) as well as the simplified system, both of which are outputs of `linearize`.
+
+# Arguments:
+- `matrices`: Output of `linearize`, an object containing a property called `C`.
+- `ssys`: Output of `linearize`.
+- `costs`: A vector of pairs
+"""
+function build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::AbstractVector{<:Pair})
+    x = ModelingToolkit.states(ssys)
+    y = ModelingToolkit.outputs(ssys)
+    nx = length(x)
+    new_Cs = map(costs) do (xi, ci)
+        i = findfirst(isequal(xi), x)
+        if i !== nothing
+            sqrt(ci) .* ((1:nx)' .== i)
+        else # not a state, get output instead
+            i = findfirst(isequal(xi), y)
+            i === nothing && error("$xi is neither a state nor an output")
+            sqrt(ci) .* matrices.C[i, :]
+        end
+    end
+    C = reduce(vcat, new_Cs)
+    C'C
+end
+
+"""
+    build_quadratic_cost_matrix(sys::ODESystem, inputs::Vector, costs::Vector{Pair}; kwargs...)
+
+Assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of system `sys` accoring to the vector of pairs `costs`.
+
+The motivation for this function is that ModelingToolkit does not guarantee
+- Which states are selected as states after simplification.
+- The order of the states.
+
+The second problem above, the ordering of the states, can be worked around using `reorder_states`, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton needs the linearization (`matrices`) as well as the simplified system, both of which are outputs of `linearize`.
+
+# Arguments:
+- `inputs`: A vector of variables that are to be considered controlled inputs for the LQR controller.
+- `costs`: A vector of pairs.
+"""
+function build_quadratic_cost_matrix(sys::ODESystem, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
+    matrices, ssys = ModelingToolkit.linearize(sys, inputs, first.(costs); kwargs...)
+    x = ModelingToolkit.states(ssys)
+    y = ModelingToolkit.outputs(ssys)
+    nx = length(x)
+    new_Cs = map(costs) do (xi, ci)
+        i = findfirst(isequal(xi), x)
+        if i !== nothing
+            sqrt(ci) .* ((1:nx)' .== i)
+        else # not a state, get output instead
+            i = findfirst(isequal(xi), y)
+            i === nothing && error("$xi is neither a state nor an output")
+            sqrt(ci) .* matrices.C[i, :]
+        end
+    end
+    C = reduce(vcat, new_Cs)
+    C'C
+end

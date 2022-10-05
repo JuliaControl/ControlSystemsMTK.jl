@@ -1,7 +1,7 @@
 name = "ControlSystemsMTK"
 uuid = "687d7614-c7e5-45fc-bfc3-9ee385575c88"
 authors = ["Fredrik Bagge Carlson"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 ControlSystemIdentification = "3abffc1c-5106-53b7-b354-a47bfc086282"
@@ -18,7 +18,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 ControlSystemIdentification = "2.4.1"
 ControlSystemsBase = "1.0.1"
-ModelingToolkit = "8.18"
+ModelingToolkit = "8.26"
 ModelingToolkitStandardLibrary = "1.5"
 Optim = "1"
 OrdinaryDiffEq = "6"

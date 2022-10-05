@@ -30,7 +30,7 @@ using Optim, Optim.LineSearches
 using SymbolicControlSystems
 
 export sconnect, feedback, ODESystem, states, observed, named_ss
-
+export build_quadratic_cost_matrix
 
 include("ode_system.jl")
 include("symbolic_optimization.jl")
