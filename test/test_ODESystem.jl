@@ -35,7 +35,7 @@ isinteractive() && plot(sol)
 x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
 @unpack input, output = P
 P02_named = named_ss(P, [input.u], [output.u])
-@test P02_named.x == [Symbol("x[1](t)")]
+@test P02_named.x == [Symbol("(x(t))[1]")]
 @test P02_named.u == [Symbol("input₊u(t)")]
 @test P02_named.y == [Symbol("output₊u(t)")]
 
