@@ -231,11 +231,12 @@ function RobustAndOptimalControl.named_ss(
     )
 end
 
-function ModelingToolkit.get_disturbance_system(dist::ModelingToolkit.DisturbanceModel{<:LTISystem})
-    ControlSystemsBase.issiso(dist.model) || error("Disturbance model must be SISO")
-    Blocks.StateSpace(ssdata(ss(dist.model))..., name=dist.name)
+if isdefined(ModelingToolkit, :get_disturbance_system)
+    function ModelingToolkit.get_disturbance_system(dist::ModelingToolkit.DisturbanceModel{<:LTISystem})
+        ControlSystemsBase.issiso(dist.model) || error("Disturbance model must be SISO")
+        Blocks.StateSpace(ssdata(ss(dist.model))..., name=dist.name)
+    end
 end
-
 
 """
     build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::Vector{Pair})
