@@ -18,21 +18,21 @@ A third idea: just use named systems with named indexing to obtain any system yo
 using LinearAlgebra
 using ModelingToolkit, ControlSystemsBase
 using ControlSystemsBase: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
-using ControlSystemIdentification
+# using ControlSystemIdentification
 using RobustAndOptimalControl
 import ModelingToolkit: ODESystem, FnType, Symbolics
 using ModelingToolkit: states, observed, isdifferential
 using ModelingToolkit.Symbolics
 using ModelingToolkit.Symbolics: jacobian, solve_for
 using UnPack
-using Optim, Optim.LineSearches
+# using Optim, Optim.LineSearches
 
-using SymbolicControlSystems
+# using SymbolicControlSystems
 
 export sconnect, feedback, ODESystem, states, observed, named_ss
 export build_quadratic_cost_matrix
 
 include("ode_system.jl")
-include("symbolic_optimization.jl")
+# include("symbolic_optimization.jl")
 
 end
