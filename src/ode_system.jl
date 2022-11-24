@@ -173,35 +173,40 @@ function RobustAndOptimalControl.named_ss(
     kwargs...,
 )
 
-    inputs = map(inputs) do inp
-        if inp isa ODESystem
-            @variables u(t)
-            if u ∈ Set(states(inp))
-                inp.u
+    if inputs isa Symbol
+        outputs isa Symbol || throw(ArgumentError("inputs and outputs must be either both symbols or both vectors of symbols"))
+        nu = ny = 1
+    else # map symbols to symbolic variables
+        inputs = map(inputs) do inp
+            if inp isa ODESystem
+                @variables u(t)
+                if u ∈ Set(states(inp))
+                    inp.u
+                else
+                    error("Input $(inp.name) is an ODESystem and not a variable")
+                end
             else
-                error("Input $(inp.name) is an ODESystem and not a variable")
+                inp
             end
-        else
-            inp
         end
-    end
-    outputs = map(outputs) do out
-        if out isa ODESystem
-            @variables u(t)
-            if u ∈ Set(states(out))
-                out.u
+        outputs = map(outputs) do out
+            if out isa ODESystem
+                @variables u(t)
+                if u ∈ Set(states(out))
+                    out.u
+                else
+                    error("Outut $(out.name) is an ODESystem and not a variable")
+                end
             else
-                error("Outut $(out.name) is an ODESystem and not a variable")
+                out
             end
-        else
-            out
         end
+        nu = length(inputs)
+        ny = length(outputs)
     end
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
     symstr(x) = Symbol(string(x))
     unames = symstr.(inputs)
-    nu = length(inputs)
-    ny = length(outputs)
     if size(matrices.B, 2) == 2nu
         nx = size(matrices.A, 1)
          # This indicates that input derivatives are present
