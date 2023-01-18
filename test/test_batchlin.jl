@@ -1,4 +1,4 @@
-using ControlSystemsMTK, ModelingToolkit, RobustAndOptimalControl
+using ControlSystemsMTK, ModelingToolkit, RobustAndOptimalControl, MonteCarloMeasurements
 using ModelingToolkit: getdefault
 unsafe_comparisons(true)
 
@@ -21,6 +21,7 @@ eqs = [D(x) ~ v
 bounds = getbounds(duffing, states(duffing))
 sample_within_bounds((l, u)) = (u - l) * rand() + l
 # Create a vector of operating points
+N = 10
 ops = map(1:N) do i
     op = Dict(x => sample_within_bounds(bounds[x]) for x in keys(bounds) if isfinite(bounds[x][1]))
 end
