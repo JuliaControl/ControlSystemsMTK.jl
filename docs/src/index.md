@@ -1,17 +1,25 @@
-# ControlSystemsMTK
+# ControlSystemsMTK.jl
 
-[![Build Status](https://github.com/baggepinnen/ControlSystemsMTK.jl/workflows/CI/badge.svg)](https://github.com/baggepinnen/ControlSystemsMTK.jl/actions)
-[![Coverage](https://codecov.io/gh/baggepinnen/ControlSystemsMTK.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/baggepinnen/ControlSystemsMTK.jl)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://juliacontrol.github.io/ControlSystemsMTK.jl/dev)
+ControlSystemsMTK provides an interface between [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) and [ModelingToolkit.jl](https://github.com/SciML/ModelingToolkit.jl).
 
-An interface between [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) and [ModelingToolkit.jl](https://github.com/SciML/ModelingToolkit.jl).
+See the videos below for examples of using ControlSystems and ModelingToolkit together.
 
-See the video below, at 17:30, for an example of using ControlSystems and ModelingToolkit together
-[![CS and MTK on youtube](https://img.youtube.com/vi/favQKOyyx4o/0.jpg)](https://www.youtube.com/watch?v=favQKOyyx4o)
+```@raw html
+<iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/favQKOyyx4o" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+```
+
+
+
+
+
+## Installation
+```
+pkg> add ControlSystemsMTK
+```
 
 
 ## From ControlSystems to ModelingToolkit
-Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSystems into the corresponding [`ModelingToolkitStandardLibrary.Blocks.StateSpace`](http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace). If `sys` is a named statespace object, the names will be retained in the `ODESystem`.
+Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSystems into the corresponding [`ModelingToolkitStandardLibrary.Blocks.StateSpace`](http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace). If `sys` is a [named statespace object](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), the names will be retained in the `ODESystem`.
 
 ### Example:
 
@@ -47,13 +55,12 @@ julia> equations(P)
 
 
 ## From ModelingToolkit to ControlSystems
-An `ODESystem` can be converted to a named statespace object from [RobustAndOptimalControl.jl](https://github.com/JuliaControl/RobustAndOptimalControl.jl) by calling
+An `ODESystem` can be converted to a named statespace object from [RobustAndOptimalControl.jl](https://github.com/JuliaControl/RobustAndOptimalControl.jl) by calling [`named_ss`](@ref)
 
 ```julia
 named_ss(ode_sys, inputs, outputs; op)
 ```
 this performs a linearization of `ode_sys` around the operating point `op` (defaults to the default values of all variables in `ode_sys`).
-
 
 ### Example:
 Using `P` from above:
@@ -96,14 +103,18 @@ D =
 Continuous-time state-space model
 ```
 
-ModelingToolkit tends to give weird names to inputs and outputs etc., to access variables easily, `named_ss` [implements prefix matching](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), so that you can access the mapping from `input₊u(t)` to `output₊u(t)` by
+ModelingToolkit tends to give weird names to inputs and outputs etc., to access variables easily, [`named_ss`](@ref) [implements prefix matching](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), so that you can access the mapping from `input₊u(t)` to `output₊u(t)` by
 ```julia
 P02_named[:out, :in]
 ```
 
+To learn more about linearization of ModelingToolkit models, see the video below
+```@raw html
+<iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/-XOux-2XDGI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+```
 
-### Internals: Transformation of non-proper models to proper statespace form
-For some models, ModelingToolkit will fail to produce a proper statespace model (a non-proper model is differentiating the inputs, i.e., it has a numerator degree higher than the denominator degree if represented as a transfer function) when calling `linearize`. For such models, given on the form
+## Internals: Transformation of non-proper models to proper statespace form
+For some models, ModelingToolkit will fail to produce a proper statespace model (a non-proper model is differentiating the inputs, i.e., it has a numerator degree higher than the denominator degree if represented as a transfer function) when calling [`linearize`](@ref). For such models, given on the form
 $$\dot x = Ax + Bu + \bar B \dot u$$
 we create the following augmented descriptor model
 ```math
@@ -119,7 +130,6 @@ sE &= A_e x_e + B_e u
 \end{aligned}
 ```
 
-![image](https://user-images.githubusercontent.com/3797491/190910994-e249f95c-d536-4775-a92b-db10b9200bdf.png)
 
 where $X_u$ is a new algebraic state variable and $I_u$ is a selector matrix that picks out the differentiated inputs appearing in $\dot u$ (if all inputs appear, $I_u = I$).
 
