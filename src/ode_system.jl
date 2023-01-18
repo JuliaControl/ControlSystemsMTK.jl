@@ -162,7 +162,7 @@ outputs(sys) = filter(s -> ModelingToolkit.isoutput(s), states(sys))
 """
     RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)
 
-Convert an `ODESystem` to a `NamedStateSpace`. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`, reproduced below.
+Convert an `ODESystem` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`, reproduced below.
 
 $(@doc(ModelingToolkit.linearize))
 """

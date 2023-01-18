@@ -88,3 +88,6 @@ nyquistcircles!(w, centers, radii, ylims = (-5, 1), xlims = (-3, 4))
 some methods for robust control operate on such circles. Notice how the circles are conservative in many cases, this is typically due to the gain varying between the models for the same phase.
 
 If you plot the Nyquist curve using the `plotly()` backend rather than the default `gr()` backend used here, you can hover the mouse over the curves and see which frequency they correspond to etc. 
+
+## Gain scheduling
+Above, we tuned one controller for each operating point, wouldn't it be nice if we had some features to simulate a gain-scheduled controller that interpolates between the different controllers depending on the operating pont? Currently, we don't have that, so maybe we have to mention this to Santa next time we see him. 
