@@ -30,6 +30,7 @@ using UnPack
 # using SymbolicControlSystems
 
 export sconnect, feedback, ODESystem, states, observed, named_ss
+export batch_ss
 export build_quadratic_cost_matrix
 
 include("ode_system.jl")
