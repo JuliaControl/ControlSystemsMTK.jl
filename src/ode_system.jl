@@ -354,7 +354,7 @@ eqs = [D(x) ~ v
 
 @named duffing = ODESystem(eqs, t)
 
-
+bounds = getbounds(duffing, states(duffing))
 sample_within_bounds((l, u)) = (u - l) * rand() + l
 # Create a vector of operating points
 ops = map(1:N) do i
