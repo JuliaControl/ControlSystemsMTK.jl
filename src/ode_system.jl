@@ -423,7 +423,7 @@ where `v` is a scalar scheduling variable.
 # Arguments:
 - `systems`: A vector of `ControlSystemsBase.StateSpace` objects
 - `vt`: A vector of breakpoint values for the scheduling variable `v`, this has the same length as `systems`.
-- `interpolator`: A constructor that takes `interpolator(values, breakpoints)` and returns an interpolator object that can be called with `interpolator(v)` to get the interpolated value at `v`. `LinearInterpolation` from DataInterpolations.jl is a good choice.
+- `interpolator`: A constructor `i = interpolator(values, breakpoints)` and returns an interpolator object that can be called like `i(v)` to get the interpolated value at `v`. `LinearInterpolation` from DataInterpolations.jl is a good choice, but a lookup table can also be used.
 """
 function GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros(systems[1].nx), name, u0 = zeros(systems[1].nu), y0 = zeros(systems[1].ny))
 
@@ -464,3 +464,75 @@ function GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros(syst
     ]
     compose(ODESystem(eqs, t, name = name), [input, output, scheduling_input])
 end
+
+# struct InterpolatorGain{I} <: Function
+#     interpolator::I
+# end
+
+# (ig::InterpolatorGain)(v) = ig.interpolator(v)
+
+#=
+The HammersteinWienerSystem idea will not really pan outsince there is no way of getting the InterpolatorGain be a function of v
+We can however use the PartitionedStateSpace to prove stability of the closed-llop gain-scheduled system by moving the maximum gain of the interpolator to either the bottom row or the rightmost column, and then calculating the structured singular value with real structured uncertainty (infinitely time varying)
+=#
+# function GainScheduledLFT(systems, vt; interpolator)
+#     ig(array) = InterpolatorGain(interpolator(array, vt))
+#     s1 = first(systems)
+#     (; nx, nu, ny) = s1
+
+#     A,B,C,D = ssdata(s1)
+#     Aconst = [allequal(getindex.(getfield.(systems, :A), i, j)) for i = 1:nx, j = 1:nx]
+#     Bconst = [allequal(getindex.(getfield.(systems, :B), i, j)) for i = 1:nx, j = 1:nu]
+#     Cconst = [allequal(getindex.(getfield.(systems, :C), i, j)) for i = 1:ny, j = 1:nx]
+#     Dconst = [allequal(getindex.(getfield.(systems, :D), i, j)) for i = 1:ny, j = 1:nu]
+#     A = A .* Aconst
+#     B1 = B .* Bconst
+#     C1 = C .* Cconst
+#     D11 = D .* Dconst
+
+#     Mlpv = .! [Aconst Bconst; Cconst Dconst]
+#     total_num_lpv = count(!, Aconst) + count(!, Bconst) + count(!, Cconst) + count(!, Dconst)
+
+#     B2 = zeros(nx, total_num_lpv)
+#     C2 = zeros(total_num_lpv, nx)
+#     D12 = zeros(ny, total_num_lpv)
+#     D21 = zeros(total_num_lpv, nu)
+#     D22 = zeros(total_num_lpv, total_num_lpv)
+
+#     c = 1
+#     interp_gains = Function[]
+#     for i = axes(Mlpv, 1), j = axes(Mlpv, 2)
+#         # Incoming LPV are B2, D12, D22
+#         # Outgoing LPV are C2, D21, D22
+#         # LPV for A has B2 as incoming and C2 as outgoing
+#         # LPV for B has B2 as incoming and D21 as outgoing
+#         # LPV for C has D12 as incoming and C2 as outgoing
+#         # LPV for D has D22 as both incoming and outgoing
+#         if Mlpv[i, j]
+#             if i <= nx # A or B
+#                 if j <= nx # A
+#                     B2[i, c] = 1
+#                     C2[c, j] = 1
+#                     push!(interp_gains, ig([s.A[i,j] for s in systems]))
+#                 else # B
+#                     B2[c, j - nx] = 1
+#                     D21[i - ny, c] = 1
+#                     push!(interp_gains, ig([s.B[i,j-nx] for s in systems]))
+#                 end
+#             else # C or D
+#                 if j <= nx # C
+#                     D12[i-nx, c] = 1
+#                     C2[c, j] = 1
+#                     push!(interp_gains, ig([s.C[i-nx,j] for s in systems]))
+#                 else # D
+#                     D22[c, c] = 1
+#                     push!(interp_gains, ig([s.D[i-nx,j-nx] for s in systems]))
+#                 end
+#             end
+#             c += 1
+#         end
+#     end
+
+#     P = ControlSystemsBase.PartitionedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, s1.timeevol)
+#     # ControlSystemsBase.HammersteinWienerSystem(P, interp_gains)
+# end

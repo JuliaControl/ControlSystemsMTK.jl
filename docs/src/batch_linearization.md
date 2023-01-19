@@ -98,7 +98,7 @@ using OrdinaryDiffEq
 using DataInterpolations # Required to interpolate between the controllers
 @named fb  = Blocks.Add(k2=-1)
 @named ref = Blocks.Square(frequency=1/6, amplitude=0.5, offset=0.5, start_time=1)
-@named F   = Blocks.SecondOrder(w=10, d=0.7) # A reference pre-filter
+@named F   = Blocks.SecondOrder(w=15, d=1) # A reference pre-filter
 connect    = ModelingToolkit.connect
 
 closed_loop_eqs = [
@@ -134,6 +134,7 @@ eqs = [
 prob = ODEProblem(structural_simplify(closed_loop), [], (0.0, 8.0))
 sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
 plot!(sol, idxs=[duffing.y.u, duffing.u.u], l=(2, :red), lab="Gain scheduled")
+plot!(sol, idxs=F.output.u, l=(1, :black, :dash, 0.5), lab="Ref")
 ```
 
 If everything worked as expected, the gain-scheduled controller should perform better than each of the included controllers individually. 
