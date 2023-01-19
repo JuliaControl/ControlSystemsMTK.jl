@@ -22,9 +22,8 @@ bounds = getbounds(duffing, states(duffing))
 sample_within_bounds((l, u)) = (u - l) * rand() + l
 # Create a vector of operating points
 N = 10
-ops = map(1:N) do i
-    op = Dict(x => sample_within_bounds(bounds[x]) for x in keys(bounds) if isfinite(bounds[x][1]))
-end
+xs = range(getbounds(x)[1], getbounds(x)[2], length=N)
+ops = Dict.(x .=> xs)
 
 
 Ps, ssys = batch_ss(duffing, [u], [y], ops)
@@ -32,3 +31,10 @@ Ps, ssys = batch_ss(duffing, [u], [y], ops)
 
 @test Ps[1] == ss(linearize(duffing, [u], [y]; op=ops[1])[1]...)
 @test Ps[end] == ss(linearize(duffing, [u], [y]; op=ops[end])[1]...)
+
+##
+
+using DataInterpolations
+@named Cgs = GainScheduledStateSpace(Ps, xs, interpolator=LinearInterpolation)
+@test Cgs isa ODESystem
+# This is tested better in the docs
