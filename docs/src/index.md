@@ -7,7 +7,9 @@ See the videos below for examples of using ControlSystems and ModelingToolkit to
 ```@raw html
 <iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/favQKOyyx4o" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 ```
-
+```@raw html
+<iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/Effifd9Th9I" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+```
 
 
 
@@ -112,6 +114,11 @@ To learn more about linearization of ModelingToolkit models, see the video below
 ```@raw html
 <iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/-XOux-2XDGI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 ```
+
+## Additional resources
+- [Modeling for control using ModelingToolkit](https://help.juliahub.com/juliasimcontrol/dev/examples/mtk_control/) tutorial
+- [Linear Analysis tools in ModelingToolkit](https://docs.sciml.ai/ModelingToolkitStandardLibrary/dev/API/linear_analysis/)
+- [Video demo using ControlSystems and MTK](https://youtu.be/Effifd9Th9I?t=1243)
 
 ## Internals: Transformation of non-proper models to proper statespace form
 For some models, ModelingToolkit will fail to produce a proper statespace model (a non-proper model is differentiating the inputs, i.e., it has a numerator degree higher than the denominator degree if represented as a transfer function) when calling [`linearize`](@ref). For such models, given on the form
