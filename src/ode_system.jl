@@ -402,3 +402,65 @@ function batch_ss(args...; kwargs...)
     lins, ssys = batch_linearize(args...; kwargs...)
     [ss(l...) for l in lins], ssys
 end
+
+
+maybe_interp(interpolator, x, t) = allequal(x) ? x[1] : interpolator(x, t)
+
+"""
+    GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros((systems[1]).nx), name, u0 = zeros((systems[1]).nu), y0 = zeros((systems[1]).ny))
+
+A parameter-varying version of [`Blocks.StateSpace`](@ref), implementing the following equations:
+
+```math
+\\begin{aligned}
+\\dot{x} &= A(v) x + B(v) u \\\\
+y        &= C(v) x + D(v) u
+\\end{aligned}
+```
+
+where `v` is a scalar scheduling variable.
+
+# Arguments:
+- `systems`: A vector of `ControlSystemsBase.StateSpace` objects
+- `vt`: A vector of breakpoint values for the scheduling variable `v`, this has the same length as `systems`.
+- `interpolator`: A constructor that takes `interpolator(values, breakpoints)` and returns an interpolator object that can be called with `interpolator(v)` to get the interpolated value at `v`. `LinearInterpolation` from DataInterpolations.jl is a good choice.
+"""
+function GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros(systems[1].nx), name, u0 = zeros(systems[1].nu), y0 = zeros(systems[1].ny))
+
+    s1 = first(systems)
+    (; nx, nu, ny) = s1
+
+    Aint = [maybe_interp(interpolator, getindex.(getfield.(systems, :A), i, j), vt) for i = 1:nx, j = 1:nx]
+    Bint = [maybe_interp(interpolator, getindex.(getfield.(systems, :B), i, j), vt) for i = 1:nx, j = 1:nu]
+    Cint = [maybe_interp(interpolator, getindex.(getfield.(systems, :C), i, j), vt) for i = 1:ny, j = 1:nx]
+    Dint = [maybe_interp(interpolator, getindex.(getfield.(systems, :D), i, j), vt) for i = 1:ny, j = 1:nu]
+
+    @named input = Blocks.RealInput(nin = nu)
+    @named scheduling_input = Blocks.RealInput()
+    @named output = Blocks.RealOutput(nout = ny)
+    @variables x(t)[1:nx]=x_start [
+        description = "State variables of gain-scheduled statespace system $name",
+    ]
+    @variables v(t) = 0 [
+        description = "Scheduling variable of gain-scheduled statespace system $name",
+    ]
+    
+    @variables A(v)[1:nx, 1:nx] = systems[1].A
+    @variables B(v)[1:nx, 1:nu] = systems[1].B
+    @variables C(v)[1:ny, 1:nx] = systems[1].C
+    @variables D(v)[1:ny, 1:nu] = systems[1].D
+    A,B,C,D = collect.((A,B,C,D))
+
+    eqs = [
+        v ~ scheduling_input.u;
+        [A[i] ~ (Aint[i] isa Number ? Aint[i] : Aint[i](v)) for i in eachindex(A)];
+        [B[i] ~ (Bint[i] isa Number ? Bint[i] : Bint[i](v)) for i in eachindex(B)];
+        [C[i] ~ (Cint[i] isa Number ? Cint[i] : Cint[i](v)) for i in eachindex(C)];
+        [D[i] ~ (Dint[i] isa Number ? Dint[i] : Dint[i](v)) for i in eachindex(D)];
+        [Differential(t)(x[i]) ~ sum(A[i, k] * x[k] for k in 1:nx) +
+                                 sum(B[i, j] * (input.u[j] - u0[j]) for j in 1:nu)
+         for i in 1:nx];
+        output.u .~ C * x .+ D * (input.u .- u0) .+ y0
+    ]
+    compose(ODESystem(eqs, t, name = name), [input, output, scheduling_input])
+end
