@@ -409,7 +409,7 @@ maybe_interp(interpolator, x, t) = allequal(x) ? x[1] : interpolator(x, t)
 """
     GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros((systems[1]).nx), name, u0 = zeros((systems[1]).nu), y0 = zeros((systems[1]).ny))
 
-A parameter-varying version of [`Blocks.StateSpace`](@ref), implementing the following equations:
+A linear parameter-varying (LPV) version of [`Blocks.StateSpace`](@ref), implementing the following equations:
 
 ```math
 \\begin{aligned}
@@ -464,6 +464,10 @@ function GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros(syst
     ]
     compose(ODESystem(eqs, t, name = name), [input, output, scheduling_input])
 end
+
+"LPVStateSpace is equivalent to GainScheduledStateSpace, see the docs for GainScheduledStateSpace."
+const LPVStateSpace = GainScheduledStateSpace
+
 
 # struct InterpolatorGain{I} <: Function
 #     interpolator::I
