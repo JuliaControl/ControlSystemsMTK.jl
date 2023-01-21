@@ -10,11 +10,12 @@ Modules = [ControlSystemsMTK]
 Private = false
 ```
 ```@docs
+bodeplot
 linearize
 linearization_function
+loopshapingPID
 named_ss
-ModelingToolkit.reorder_states
 ModelingToolkitStandardLibrary.Blocks.get_looptransfer
 ModelingToolkitStandardLibrary.Blocks.StateSpace
-bodeplot
+ModelingToolkit.reorder_states
 ```

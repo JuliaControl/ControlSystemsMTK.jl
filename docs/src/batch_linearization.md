@@ -59,7 +59,7 @@ bodeplot(P, w, legend=:bottomright) # Should look similar to the one above
 ```
 
 ## Controller tuning
-Let's also do some controller tuning for the linearized models above. The function `batch_tune` is not really required here, but it shows how we might go about building more sophisticated tools for batch tuning. In this example, we will tune a PID controller using the function `loopshapingPID`.
+Let's also do some controller tuning for the linearized models above. The function `batch_tune` is not really required here, but it shows how we might go about building more sophisticated tools for batch tuning. In this example, we will tune a PID controller using the function [`loopshapingPID`](@ref).
 ```@example BATCHLIN
 function batch_tune(f, Ps)
     f.(Ps)
