@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>API · ControlSystemsMTK Documentation</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">ControlSystemsMTK Documentation</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../batch_linearization/">Batch linearization and gain scheduling</a></li></ul></li><li class="is-active"><a class="tocitem" href>API</a><ul class="internal"><li><a class="tocitem" href="#Index"><span>Index</span></a></li><li><a class="tocitem" href="#Docstrings"><span>Docstrings</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>API</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>API</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/master/docs/src/api.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Exported-functions-and-types"><a class="docs-heading-anchor" href="#Exported-functions-and-types">Exported functions and types</a><a id="Exported-functions-and-types-1"></a><a class="docs-heading-anchor-permalink" href="#Exported-functions-and-types" title="Permalink"></a></h1><h2 id="Index"><a class="docs-heading-anchor" href="#Index">Index</a><a id="Index-1"></a><a class="docs-heading-anchor-permalink" href="#Index" title="Permalink"></a></h2><ul><li><a href="#ModelingToolkit.ODESystem-Tuple{AbstractStateSpace}"><code>ModelingToolkit.ODESystem</code></a></li><li><a href="#ControlSystemsBase.bodeplot"><code>ControlSystemsBase.bodeplot</code></a></li><li><a href="#ControlSystemsBase.feedback-Tuple{T} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsBase.feedback</code></a></li><li><a href="#ControlSystemsBase.loopshapingPID"><code>ControlSystemsBase.loopshapingPID</code></a></li><li><a href="#ControlSystemsMTK.GainScheduledStateSpace-Tuple{Any, Any}"><code>ControlSystemsMTK.GainScheduledStateSpace</code></a></li><li><a href="#ControlSystemsMTK.batch_ss-Tuple"><code>ControlSystemsMTK.batch_ss</code></a></li><li><a href="#ControlSystemsMTK.build_quadratic_cost_matrix-Tuple{NamedTuple, ODESystem, AbstractVector{&lt;:Pair}}"><code>ControlSystemsMTK.build_quadratic_cost_matrix</code></a></li><li><a href="#ControlSystemsMTK.build_quadratic_cost_matrix-Tuple{ODESystem, AbstractVector, AbstractVector{&lt;:Pair}}"><code>ControlSystemsMTK.build_quadratic_cost_matrix</code></a></li><li><a href="#ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{T, T}} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsMTK.sconnect</code></a></li><li><a href="#ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{Function, T}} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsMTK.sconnect</code></a></li><li><a href="#ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{Any, T}} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsMTK.sconnect</code></a></li><li><a href="#ModelingToolkit.linearization_function"><code>ModelingToolkit.linearization_function</code></a></li><li><a href="#ModelingToolkit.linearize"><code>ModelingToolkit.linearize</code></a></li><li><a href="#ModelingToolkit.reorder_states"><code>ModelingToolkit.reorder_states</code></a></li><li><a href="#ModelingToolkitStandardLibrary.Blocks.StateSpace"><code>ModelingToolkitStandardLibrary.Blocks.StateSpace</code></a></li><li><a href="#ModelingToolkitStandardLibrary.Blocks.get_looptransfer"><code>ModelingToolkitStandardLibrary.Blocks.get_looptransfer</code></a></li><li><a href="#RobustAndOptimalControl.named_ss-Tuple{AbstractTimeDependentSystem, Any, Any}"><code>RobustAndOptimalControl.named_ss</code></a></li><li><a href="#RobustAndOptimalControl.named_ss"><code>RobustAndOptimalControl.named_ss</code></a></li><li><a href="#SymbolicControlSystems.ccode"><code>SymbolicControlSystems.ccode</code></a></li><li><a href="#SymbolicControlSystems.print_c_array"><code>SymbolicControlSystems.print_c_array</code></a></li></ul><h2 id="Docstrings"><a class="docs-heading-anchor" href="#Docstrings">Docstrings</a><a id="Docstrings-1"></a><a class="docs-heading-anchor-permalink" href="#Docstrings" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-binding" id="ModelingToolkit.ODESystem-Tuple{AbstractStateSpace}" href="#ModelingToolkit.ODESystem-Tuple{AbstractStateSpace}"><code>ModelingToolkit.ODESystem</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">ModelingToolkit.ODESystem(sys::AbstractStateSpace; name::Symbol, x0 = zeros(sys.nx), x_names, u_names, y_names)</code></pre><p>Create an ODESystem from <code>sys::StateSpace</code>. </p><p><strong>Arguments:</strong></p><ul><li><code>sys</code>: An instance of <code>StateSpace</code> or <code>NamedStateSpace</code>.</li><li><code>name</code>: A symbol giving the system a unique name.</li><li><code>x0</code>: Initial state</li></ul><p>The arguments below are automatically set if the system is a <code>NamedStateSpace</code>.</p><ul><li><code>x_names</code>: A vector of symbols with state names. </li><li><code>u_names</code>: A vector of symbols with input names. </li><li><code>y_names</code>: A vector of symbols with output names. </li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L6-L19">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsBase.feedback-Tuple{T} where T&lt;:AbstractTimeDependentSystem" href="#ControlSystemsBase.feedback-Tuple{T} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsBase.feedback</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">G = ControlSystemsBase.feedback(loopgain::T; name)</code></pre><p>Form the feedback-interconnection <span>$G = L/(1+L)$</span></p><p>The system <code>G</code> will be a new system with <code>input</code> and <code>output</code> connectors.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L103-L110">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsMTK.GainScheduledStateSpace-Tuple{Any, Any}" href="#ControlSystemsMTK.GainScheduledStateSpace-Tuple{Any, Any}"><code>ControlSystemsMTK.GainScheduledStateSpace</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros((systems[1]).nx), name, u0 = zeros((systems[1]).nu), y0 = zeros((systems[1]).ny))</code></pre><p>A linear parameter-varying (LPV) version of <a href="#ModelingToolkitStandardLibrary.Blocks.StateSpace"><code>Blocks.StateSpace</code></a>, implementing the following equations:</p><p class="math-container">\[\begin{aligned}
+\dot{x} &amp;= A(v) x + B(v) u \\
+y        &amp;= C(v) x + D(v) u
+\end{aligned}\]</p><p>where <code>v</code> is a scalar scheduling variable.</p><p><strong>Arguments:</strong></p><ul><li><code>systems</code>: A vector of <code>ControlSystemsBase.StateSpace</code> objects</li><li><code>vt</code>: A vector of breakpoint values for the scheduling variable <code>v</code>, this has the same length as <code>systems</code>.</li><li><code>interpolator</code>: A constructor <code>i = interpolator(values, breakpoints)</code> and returns an interpolator object that can be called like <code>i(v)</code> to get the interpolated value at <code>v</code>. <code>LinearInterpolation</code> from DataInterpolations.jl is a good choice, but a lookup table can also be used.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L409-L427">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsMTK.batch_ss-Tuple" href="#ControlSystemsMTK.batch_ss-Tuple"><code>ControlSystemsMTK.batch_ss</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">batch_ss(sys, inputs, outputs, ops::AbstractVector{&lt;:AbstractDict};
+            t = 0.0,
+            allow_input_derivatives = false,
+            zero_dummy_der = false,
+            kwargs...)</code></pre><p>Linearize <code>sys</code> in multiple operating points <code>ops::Vector{Dict}</code>. Returns a vector of <code>StateSpace</code> objects and the simplified system.</p><p><strong>Example:</strong></p><pre><code class="nohighlight hljs">using ControlSystemsMTK, ModelingToolkit, RobustAndOptimalControl
+using ModelingToolkit: getdefault
+unsafe_comparisons(true)
+
+# Create a model
+@parameters t k=10 k3=2 c=1
+@variables x(t)=0 [bounds = (-2, 2)]
+@variables v(t)=0
+@variables u(t)=0
+@variables y(t)=0
+
+D = Differential(t)
+
+eqs = [D(x) ~ v
+       D(v) ~ -k * x - k3 * x^3 - c * v + 10u
+       y ~ x]
+
+
+@named duffing = ODESystem(eqs, t)
+
+bounds = getbounds(duffing, states(duffing))
+sample_within_bounds((l, u)) = (u - l) * rand() + l
+# Create a vector of operating points
+ops = map(1:N) do i
+    op = Dict(x =&gt; sample_within_bounds(bounds[x]) for x in keys(bounds) if isfinite(bounds[x][1]))
+end
+
+
+Ps, ssys = batch_ss(duffing, [u], [y], ops)
+w = exp10.(LinRange(-2, 2, 200))
+bodeplot(Ps, w)
+P = RobustAndOptimalControl.ss2particles(Ps) # convert to a single StateSpace system with `Particles` as coefficients.
+bodeplot(P, w) # Should look similar to the one above</code></pre><p>Let&#39;s also do some tuning for the linearized models above</p><pre><code class="nohighlight hljs">function batch_tune(f, Ps)
+    f.(Ps)
+end
+
+Cs = batch_tune(Ps) do P
+    # C, kp, ki, fig, CF = loopshapingPI(P, 6; phasemargin=45)
+    C, kp, ki, kd, fig, CF = loopshapingPID(P, 6; Mt=1.3, Tf = 1/100)
+    ss(CF)
+end
+
+P = RobustAndOptimalControl.ss2particles(Ps)
+C = RobustAndOptimalControl.ss2particles(Cs)
+
+nyquistplot(P * C,
+            w,
+            ylims = (-10, 3),
+            xlims = (-5, 10),
+            points = true,
+            Ms_circles = [1.5, 2],
+            Mt_circles = [1.5, 2])
+
+# Fit circles that encircles the Nyquist curve for each frequency
+centers, radii = fit_complex_perturbations(P * C, w; relative = false, nominal = :center)
+nyquistcircles!(w, centers, radii, ylims = (-4, 1), xlims = (-3, 4))</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L326-L400">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsMTK.build_quadratic_cost_matrix-Tuple{NamedTuple, ODESystem, AbstractVector{&lt;:Pair}}" href="#ControlSystemsMTK.build_quadratic_cost_matrix-Tuple{NamedTuple, ODESystem, AbstractVector{&lt;:Pair}}"><code>ControlSystemsMTK.build_quadratic_cost_matrix</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::Vector{Pair})</code></pre><p>For a system that has been linearized, assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of simplified system <code>ssys</code> accoring to the vector of pairs <code>costs</code>.</p><p>The motivation for this function is that ModelingToolkit does not guarantee</p><ul><li>Which states are selected as states after simplification.</li><li>The order of the states.</li></ul><p>The second problem above, the ordering of the states, can be worked around using <code>reorder_states</code>, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton needs the linearization (<code>matrices</code>) as well as the simplified system, both of which are outputs of <code>linearize</code>.</p><p><strong>Arguments:</strong></p><ul><li><code>matrices</code>: Output of <code>linearize</code>, an object containing a property called <code>C</code>.</li><li><code>ssys</code>: Output of <code>linearize</code>.</li><li><code>costs</code>: A vector of pairs</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L246-L261">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsMTK.build_quadratic_cost_matrix-Tuple{ODESystem, AbstractVector, AbstractVector{&lt;:Pair}}" href="#ControlSystemsMTK.build_quadratic_cost_matrix-Tuple{ODESystem, AbstractVector, AbstractVector{&lt;:Pair}}"><code>ControlSystemsMTK.build_quadratic_cost_matrix</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">build_quadratic_cost_matrix(sys::ODESystem, inputs::Vector, costs::Vector{Pair}; kwargs...)</code></pre><p>Assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of system <code>sys</code> accoring to the vector of pairs <code>costs</code>.</p><p>The motivation for this function is that ModelingToolkit does not guarantee</p><ul><li>Which states are selected as states after simplification.</li><li>The order of the states.</li></ul><p>The second problem above, the ordering of the states, can be worked around using <code>reorder_states</code>, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton needs the linearization (<code>matrices</code>) as well as the simplified system, both of which are outputs of <code>linearize</code>.</p><p><strong>Arguments:</strong></p><ul><li><code>inputs</code>: A vector of variables that are to be considered controlled inputs for the LQR controller.</li><li><code>costs</code>: A vector of pairs.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L280-L294">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{Any, T}} where T&lt;:AbstractTimeDependentSystem" href="#ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{Any, T}} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsMTK.sconnect</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">sconnect(input, sys::T; name)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L46-L48">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{Function, T}} where T&lt;:AbstractTimeDependentSystem" href="#ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{Function, T}} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsMTK.sconnect</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">sconnect(input::Function, sys::T; name)</code></pre><p>Connect a function <code>input(t)</code> to <code>sys.input</code></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L57-L61">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{T, T}} where T&lt;:AbstractTimeDependentSystem" href="#ControlSystemsMTK.sconnect-Union{Tuple{T}, Tuple{T, T}} where T&lt;:AbstractTimeDependentSystem"><code>ControlSystemsMTK.sconnect</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">sconnect(sys1::T, sys2::T; name)</code></pre><p>Connect systems in series, equivalent to <code>sys2*sys1</code> or <code>series(sys1, sys2)</code> in ControlSystems.jl terminology</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L79-L83">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="RobustAndOptimalControl.named_ss-Tuple{AbstractTimeDependentSystem, Any, Any}" href="#RobustAndOptimalControl.named_ss-Tuple{AbstractTimeDependentSystem, Any, Any}"><code>RobustAndOptimalControl.named_ss</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)</code></pre><p>Convert an <code>ODESystem</code> to a <code>NamedStateSpace</code> using linearization. <code>inputs, outputs</code> are vectors of variables determining the inputs and outputs respectively. See docstring of <code>ModelingToolkit.linearize</code> for more info on <code>kwargs</code>, reproduced below.</p><pre><code class="nohighlight hljs">(; A, B, C, D), simplified_sys = linearize(sys, inputs, outputs;    t=0.0, op = Dict(), allow_input_derivatives = false, kwargs...)
+(; A, B, C, D)                 = linearize(simplified_sys, lin_fun; t=0.0, op = Dict(), allow_input_derivatives = false)</code></pre><p>Return a NamedTuple with the matrices of a linear statespace representation on the form</p>$<p>\begin{aligned} ẋ &amp;= Ax + Bu\
+y &amp;= Cx + Du \end{aligned} $</p><p>The first signature automatically calls <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> internally, while the second signature expects the outputs of <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> as input.</p><p><code>op</code> denotes the operating point around which to linearize. If none is provided, the default values of <code>sys</code> are used.</p><p>If <code>allow_input_derivatives = false</code>, an error will be thrown if input derivatives (<span>$u̇$</span>) appear as inputs in the linearized equations. If input derivatives are allowed, the returned <code>B</code> matrix will be of double width, corresponding to the input <code>[u; u̇]</code>.</p><p>See also <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> which provides a lower-level interface, and <a href="#ModelingToolkit.reorder_states"><code>ModelingToolkit.reorder_states</code></a>.</p><p>See extended help for an example.</p><p>The implementation and notation follows that of <a href="https://ep.liu.se/ecp/043/075/ecp09430097.pdf">&quot;Linear Analysis Approach for Modelica Models&quot;, Allain et al. 2009</a></p><p><strong>Extended help</strong></p><p>This example builds the following feedback interconnection and linearizes it from the input of <code>F</code> to the output of <code>P</code>.</p><pre><code class="nohighlight hljs">
+  r ┌─────┐       ┌─────┐     ┌─────┐
+───►│     ├──────►│     │  u  │     │
+    │  F  │       │  C  ├────►│  P  │ y
+    └─────┘     ┌►│     │     │     ├─┬─►
+                │ └─────┘     └─────┘ │
+                │                     │
+                └─────────────────────┘</code></pre><pre><code class="language-julia hljs">using ModelingToolkit
+@variables t
+function plant(; name)
+    @variables x(t) = 1
+    @variables u(t)=0 y(t)=0
+    D = Differential(t)
+    eqs = [D(x) ~ -x + u
+           y ~ x]
+    ODESystem(eqs, t; name = name)
+end
+
+function ref_filt(; name)
+    @variables x(t)=0 y(t)=0
+    @variables u(t)=0 [input=true]
+    D = Differential(t)
+    eqs = [D(x) ~ -2 * x + u
+           y ~ x]
+    ODESystem(eqs, t, name = name)
+end
+
+function controller(kp; name)
+    @variables y(t)=0 r(t)=0 u(t)=0
+    @parameters kp = kp
+    eqs = [
+        u ~ kp * (r - y),
+    ]
+    ODESystem(eqs, t; name = name)
+end
+
+@named f = ref_filt()
+@named c = controller(1)
+@named p = plant()
+
+connections = [f.y ~ c.r # filtered reference to controller reference
+               c.u ~ p.u # controller output to plant input
+               p.y ~ c.y]
+
+@named cl = ODESystem(connections, t, systems = [f, c, p])
+
+lsys, ssys = linearize(cl, [f.u], [p.x])
+desired_order =  [f.x, p.x]
+lsys = ModelingToolkit.reorder_states(lsys, states(ssys), desired_order)
+
+@assert lsys.A == [-2 0; 1 -2]
+@assert lsys.B == [1; 0;;]
+@assert lsys.C == [0 1]
+@assert lsys.D[] == 0</code></pre><pre><code class="nohighlight hljs">ModelingToolkit.linearize(sys, input_name::Symbol, output_name::Symbol; kwargs...)</code></pre><p>Linearize a system between two analysis points. To get a loop-transfer function, see <a href="@ref"><code>get_looptransfer</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L162-L168">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsBase.bodeplot" href="#ControlSystemsBase.bodeplot"><code>ControlSystemsBase.bodeplot</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">fig = bodeplot(sys, args...)
+bodeplot(LTISystem[sys1, sys2...], args...; plotphase=true, kwargs...)</code></pre><p>Create a Bode plot of the <code>LTISystem</code>(s). A frequency vector <code>w</code> can be optionally provided. To change the Magnitude scale see <code>setPlotScale(str)</code></p><p>If <code>hz=true</code>, the plot x-axis will be displayed in Hertz, the input frequency vector is still treated as rad/s.</p><p><code>kwargs</code> is sent as argument to RecipesBase.plot.</p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="ModelingToolkit.linearize" href="#ModelingToolkit.linearize"><code>ModelingToolkit.linearize</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">(; A, B, C, D), simplified_sys = linearize(sys, inputs, outputs;    t=0.0, op = Dict(), allow_input_derivatives = false, kwargs...)
+(; A, B, C, D)                 = linearize(simplified_sys, lin_fun; t=0.0, op = Dict(), allow_input_derivatives = false)</code></pre><p>Return a NamedTuple with the matrices of a linear statespace representation on the form</p><p class="math-container">\[\begin{aligned}
+ẋ &amp;= Ax + Bu\\
+y &amp;= Cx + Du
+\end{aligned}\]</p><p>The first signature automatically calls <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> internally, while the second signature expects the outputs of <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> as input.</p><p><code>op</code> denotes the operating point around which to linearize. If none is provided, the default values of <code>sys</code> are used.</p><p>If <code>allow_input_derivatives = false</code>, an error will be thrown if input derivatives (<span>$u̇$</span>) appear as inputs in the linearized equations. If input derivatives are allowed, the returned <code>B</code> matrix will be of double width, corresponding to the input <code>[u; u̇]</code>.</p><p>See also <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> which provides a lower-level interface, and <a href="#ModelingToolkit.reorder_states"><code>ModelingToolkit.reorder_states</code></a>.</p><p>See extended help for an example.</p><p>The implementation and notation follows that of <a href="https://ep.liu.se/ecp/043/075/ecp09430097.pdf">&quot;Linear Analysis Approach for Modelica Models&quot;, Allain et al. 2009</a></p><p><strong>Extended help</strong></p><p>This example builds the following feedback interconnection and linearizes it from the input of <code>F</code> to the output of <code>P</code>.</p><pre><code class="nohighlight hljs">
+  r ┌─────┐       ┌─────┐     ┌─────┐
+───►│     ├──────►│     │  u  │     │
+    │  F  │       │  C  ├────►│  P  │ y
+    └─────┘     ┌►│     │     │     ├─┬─►
+                │ └─────┘     └─────┘ │
+                │                     │
+                └─────────────────────┘</code></pre><pre><code class="language-julia hljs">using ModelingToolkit
+@variables t
+function plant(; name)
+    @variables x(t) = 1
+    @variables u(t)=0 y(t)=0
+    D = Differential(t)
+    eqs = [D(x) ~ -x + u
+           y ~ x]
+    ODESystem(eqs, t; name = name)
+end
+
+function ref_filt(; name)
+    @variables x(t)=0 y(t)=0
+    @variables u(t)=0 [input=true]
+    D = Differential(t)
+    eqs = [D(x) ~ -2 * x + u
+           y ~ x]
+    ODESystem(eqs, t, name = name)
+end
+
+function controller(kp; name)
+    @variables y(t)=0 r(t)=0 u(t)=0
+    @parameters kp = kp
+    eqs = [
+        u ~ kp * (r - y),
+    ]
+    ODESystem(eqs, t; name = name)
+end
+
+@named f = ref_filt()
+@named c = controller(1)
+@named p = plant()
+
+connections = [f.y ~ c.r # filtered reference to controller reference
+               c.u ~ p.u # controller output to plant input
+               p.y ~ c.y]
+
+@named cl = ODESystem(connections, t, systems = [f, c, p])
+
+lsys, ssys = linearize(cl, [f.u], [p.x])
+desired_order =  [f.x, p.x]
+lsys = ModelingToolkit.reorder_states(lsys, states(ssys), desired_order)
+
+@assert lsys.A == [-2 0; 1 -2]
+@assert lsys.B == [1; 0;;]
+@assert lsys.C == [0 1]
+@assert lsys.D[] == 0</code></pre></div></section><section><div><pre><code class="nohighlight hljs">ModelingToolkit.linearize(sys, input_name::Symbol, output_name::Symbol; kwargs...)</code></pre><p>Linearize a system between two analysis points. To get a loop-transfer function, see <a href="#ModelingToolkitStandardLibrary.Blocks.get_looptransfer"><code>get_looptransfer</code></a></p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="ModelingToolkit.linearization_function" href="#ModelingToolkit.linearization_function"><code>ModelingToolkit.linearization_function</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">lin_fun, simplified_sys = linearization_function(sys::AbstractSystem, inputs, outputs; simplify = false, kwargs...)</code></pre><p>Return a function that linearizes the system <code>sys</code>. The function <a href="#ModelingToolkit.linearize"><code>linearize</code></a> provides a higher-level and easier to use interface.</p><p><code>lin_fun</code> is a function <code>(variables, p, t) -&gt; (; f_x, f_z, g_x, g_z, f_u, g_u, h_x, h_z, h_u)</code>, i.e., it returns a NamedTuple with the Jacobians of <code>f,g,h</code> for the nonlinear <code>sys</code> (technically for <code>simplified_sys</code>) on the form</p><p class="math-container">\[\begin{aligned}
+ẋ &amp;= f(x, z, u) \\
+0 &amp;= g(x, z, u) \\
+y &amp;= h(x, z, u)
+\end{aligned}\]</p><p>where <code>x</code> are differential states, <code>z</code> algebraic states, <code>u</code> inputs and <code>y</code> outputs. To obtain a linear statespace representation, see <a href="#ModelingToolkit.linearize"><code>linearize</code></a>. The input argument <code>variables</code> is a vector defining the operating point, corresponding to <code>states(simplified_sys)</code> and <code>p</code> is a vector corresponding to the parameters of <code>simplified_sys</code>. Note: all variables in <code>inputs</code> have been converted to parameters in <code>simplified_sys</code>.</p><p>The <code>simplified_sys</code> has undergone <a href="@ref"><code>structural_simplify</code></a> and had any occurring input or output variables replaced with the variables provided in arguments <code>inputs</code> and <code>outputs</code>. The states of this system also indicate the order of the states that holds for the linearized matrices.</p><p><strong>Arguments:</strong></p><ul><li><code>sys</code>: An <a href="#ModelingToolkit.ODESystem-Tuple{AbstractStateSpace}"><code>ODESystem</code></a>. This function will automatically apply simplification passes on <code>sys</code> and return the resulting <code>simplified_sys</code>.</li><li><code>inputs</code>: A vector of variables that indicate the inputs of the linearized input-output model.</li><li><code>outputs</code>: A vector of variables that indicate the outputs of the linearized input-output model.</li><li><code>simplify</code>: Apply simplification in tearing.</li><li><code>kwargs</code>: Are passed on to <code>find_solvables!</code></li></ul><p>See also <a href="#ModelingToolkit.linearize"><code>linearize</code></a> which provides a higher-level interface.</p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="ControlSystemsBase.loopshapingPID" href="#ControlSystemsBase.loopshapingPID"><code>ControlSystemsBase.loopshapingPID</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">C, kp, ki, kd, fig, CF = loopshapingPID(P, ω; Mt = 1.3, ϕt=75, form=:standard, doplot=false, lb=-10, ub=10, Tf = 1/1000ω, F = nothing)</code></pre><p>Selects the parameters of a PID-controller such that the Nyquist curve of the loop-transfer function <span>$L = PC$</span> at the frequency <code>ω</code> is tangent to the circle where the magnitude of <span>$T = PC / (1+PC)$</span> equals <code>Mt</code>. <code>ϕt</code> denotes the positive angle in degrees between the real axis and the tangent point.</p><p>The default values for <code>Mt</code> and <code>ϕt</code> are chosen to give a good design for processes with inertia, and may need tuning for simpler processes.</p><p>The gain of the resulting controller is generally increasing with increasing <code>ω</code> and <code>Mt</code>.</p><p><strong>Arguments:</strong></p><ul><li><code>P</code>: A SISO plant.</li><li><code>ω</code>: The specification frequency.</li><li><code>Mt</code>: The magnitude of the complementary sensitivity function at the specification frequency, <span>$|T(iω)|$</span>.</li><li><code>ϕt</code>: The </li><li><code>doplot</code>: If true, gang of four and Nyquist plots will be returned in <code>fig</code>.</li><li><code>lb</code>: log10 of lower bound for <code>kd</code>.</li><li><code>ub</code>: log10 of upper bound for <code>kd</code>.</li><li><code>Tf</code>: Time constant for second-order measurement noise filter on the form <code>tf(1, [Tf^2, 2*Tf/sqrt(2), 1])</code> to make the controller strictly proper. A practical controller typically sets this time constant slower than the default, e.g., <code>Tf = 1/100ω</code> or <code>Tf = 1/10ω</code></li><li><code>F</code>: A pre-designed filter to use instead of the default second-order filter.</li></ul><p>The parameters can be returned as one of several common representations  chosen by <code>form</code>, the options are</p><ul><li><code>:standard</code> - <span>$K_p(1 + 1/(T_i s) + T_ds)$</span></li><li><code>:series</code> - <span>$K_c(1 + 1/(τ_i s))(τ_d s + 1)$</span></li><li><code>:parallel</code> - <span>$K_p + K_i/s + K_d s$</span></li></ul><p>See also <a href="@ref"><code>loopshapingPI</code></a>, <a href="@ref"><code>pidplots</code></a>, <a href="@ref"><code>stabregionPID</code></a> and <a href="@ref"><code>placePI</code></a>.</p><p><strong>Example:</strong></p><pre><code class="language-julia hljs">P  = tf(1, [1,0,0]) # A double integrator
+Mt = 1.3  # Maximum magnitude of complementary sensitivity
+ω  = 1    # Frequency at which the specification holds
+C, kp, ki, kd, fig, CF = loopshapingPID(P, ω; Mt, ϕt = 75, doplot=true)</code></pre></div></section></article><article class="docstring"><header><a class="docstring-binding" id="RobustAndOptimalControl.named_ss" href="#RobustAndOptimalControl.named_ss"><code>RobustAndOptimalControl.named_ss</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)</code></pre><p>Convert an <code>ODESystem</code> to a <code>NamedStateSpace</code> using linearization. <code>inputs, outputs</code> are vectors of variables determining the inputs and outputs respectively. See docstring of <code>ModelingToolkit.linearize</code> for more info on <code>kwargs</code>, reproduced below.</p><pre><code class="nohighlight hljs">(; A, B, C, D), simplified_sys = linearize(sys, inputs, outputs;    t=0.0, op = Dict(), allow_input_derivatives = false, kwargs...)
+(; A, B, C, D)                 = linearize(simplified_sys, lin_fun; t=0.0, op = Dict(), allow_input_derivatives = false)</code></pre><p>Return a NamedTuple with the matrices of a linear statespace representation on the form</p>$<p>\begin{aligned} ẋ &amp;= Ax + Bu\
+y &amp;= Cx + Du \end{aligned} $</p><p>The first signature automatically calls <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> internally, while the second signature expects the outputs of <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> as input.</p><p><code>op</code> denotes the operating point around which to linearize. If none is provided, the default values of <code>sys</code> are used.</p><p>If <code>allow_input_derivatives = false</code>, an error will be thrown if input derivatives (<span>$u̇$</span>) appear as inputs in the linearized equations. If input derivatives are allowed, the returned <code>B</code> matrix will be of double width, corresponding to the input <code>[u; u̇]</code>.</p><p>See also <a href="#ModelingToolkit.linearization_function"><code>linearization_function</code></a> which provides a lower-level interface, and <a href="#ModelingToolkit.reorder_states"><code>ModelingToolkit.reorder_states</code></a>.</p><p>See extended help for an example.</p><p>The implementation and notation follows that of <a href="https://ep.liu.se/ecp/043/075/ecp09430097.pdf">&quot;Linear Analysis Approach for Modelica Models&quot;, Allain et al. 2009</a></p><p><strong>Extended help</strong></p><p>This example builds the following feedback interconnection and linearizes it from the input of <code>F</code> to the output of <code>P</code>.</p><pre><code class="nohighlight hljs">
+  r ┌─────┐       ┌─────┐     ┌─────┐
+───►│     ├──────►│     │  u  │     │
+    │  F  │       │  C  ├────►│  P  │ y
+    └─────┘     ┌►│     │     │     ├─┬─►
+                │ └─────┘     └─────┘ │
+                │                     │
+                └─────────────────────┘</code></pre><pre><code class="language-julia hljs">using ModelingToolkit
+@variables t
+function plant(; name)
+    @variables x(t) = 1
+    @variables u(t)=0 y(t)=0
+    D = Differential(t)
+    eqs = [D(x) ~ -x + u
+           y ~ x]
+    ODESystem(eqs, t; name = name)
+end
+
+function ref_filt(; name)
+    @variables x(t)=0 y(t)=0
+    @variables u(t)=0 [input=true]
+    D = Differential(t)
+    eqs = [D(x) ~ -2 * x + u
+           y ~ x]
+    ODESystem(eqs, t, name = name)
+end
+
+function controller(kp; name)
+    @variables y(t)=0 r(t)=0 u(t)=0
+    @parameters kp = kp
+    eqs = [
+        u ~ kp * (r - y),
+    ]
+    ODESystem(eqs, t; name = name)
+end
+
+@named f = ref_filt()
+@named c = controller(1)
+@named p = plant()
+
+connections = [f.y ~ c.r # filtered reference to controller reference
+               c.u ~ p.u # controller output to plant input
+               p.y ~ c.y]
+
+@named cl = ODESystem(connections, t, systems = [f, c, p])
+
+lsys, ssys = linearize(cl, [f.u], [p.x])
+desired_order =  [f.x, p.x]
+lsys = ModelingToolkit.reorder_states(lsys, states(ssys), desired_order)
+
+@assert lsys.A == [-2 0; 1 -2]
+@assert lsys.B == [1; 0;;]
+@assert lsys.C == [0 1]
+@assert lsys.D[] == 0</code></pre><pre><code class="nohighlight hljs">ModelingToolkit.linearize(sys, input_name::Symbol, output_name::Symbol; kwargs...)</code></pre><p>Linearize a system between two analysis points. To get a loop-transfer function, see <a href="@ref"><code>get_looptransfer</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/41030360e83bf01916719d8f473d2d5f8b7a3466/src/ode_system.jl#L162-L168">source</a></section><section><div><pre><code class="nohighlight hljs">named_ss(sys::AbstractStateSpace{T}; x, u, y)</code></pre><p>Create a <code>NamedStateSpace</code> system. This kind of system uses names rather than integer indices to refer to states, inputs and outputs.</p><ul><li>If a single name is provided but a vector of names is expected, this name will be used as prefix followed by a numerical index.</li><li>If no name is provided, default names (<code>x,y,u</code>) will be used.</li></ul><p><strong>Arguments:</strong></p><ul><li><code>sys</code>: A system to add names to.</li><li><code>x</code>: A list of symbols with names of the states.</li><li><code>u</code>: A list of symbols with names of the inputs.</li><li><code>y</code>: A list of symbols with names of the outputs.</li></ul><p><strong>Example</strong></p><pre><code class="language-julia hljs">G1 = ss(1,1,1,0)
+G2 = ss(1,1,1,0)
+s1 = named_ss(G1, x = :x, u = :u1, y=:y1)
+s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
+
+s1[:y1, :u1] # Index using symbols. Uses prefix matching if no exact match is found.
+
+fb = feedback(s1, s2, r = :r) # </code></pre></div></section><section><div><pre><code class="nohighlight hljs">named_ss(sys::AbstractStateSpace, name; x, y, u)</code></pre><p>If a single name of the system is provided, the outputs, inputs and states will be automatically named <code>y,u,x</code> with <code>name</code> as prefix.</p></div></section><section><div><pre><code class="nohighlight hljs">named_ss(sys::ExtendedStateSpace;       kwargs...)
+named_ss(sys::ExtendedStateSpace, name; kwargs...)</code></pre><p>Assign names to an ExtendedStateSpace. If no specific names are provided for signals <code>z,y,w,u</code> and states<code>x</code>, names will be generated automatically.</p><p><strong>Arguments:</strong></p><ul><li><code>name</code>: Prefix to add to all automatically generated names.</li><li><code>x</code></li><li><code>u</code></li><li><code>y</code></li><li><code>w</code></li><li><code>z</code></li></ul></div></section></article><article class="docstring"><header><a class="docstring-binding" id="ModelingToolkitStandardLibrary.Blocks.get_looptransfer" href="#ModelingToolkitStandardLibrary.Blocks.get_looptransfer"><code>ModelingToolkitStandardLibrary.Blocks.get_looptransfer</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">get_looptransfer(sys, ap::AnalysisPoint; kwargs)
+get_looptransfer(sys, ap_name::Symbol; kwargs)</code></pre><p>Compute the (linearized) loop-transfer function in analysis point <code>ap</code>, from <code>ap.out</code> to <code>ap.in</code>.</p><div class="admonition is-danger"><header class="admonition-header">Experimental</header><div class="admonition-body"><p>The analysis-point interface is currently experimental and at any time subject to breaking changes not respecting semantic versioning.</p></div></div><p><strong>Arguments:</strong></p><ul><li><code>kwargs</code>: Are sent to <code>ModelingToolkit.linearize</code></li></ul><p>See also <a href="@ref"><code>get_sensitivity</code></a>, <a href="@ref"><code>get_comp_sensitivity</code></a>, <a href="@ref"><code>open_loop</code></a>.</p></div></section></article><article class="docstring"><header><a class="docstring-binding" id="ModelingToolkitStandardLibrary.Blocks.StateSpace" href="#ModelingToolkitStandardLibrary.Blocks.StateSpace"><code>ModelingToolkitStandardLibrary.Blocks.StateSpace</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">StateSpace(A, B, C, D=0; x_start=zeros(size(A,1)), u0=zeros(size(B,2)), y0=zeros(size(C,1)), name)</code></pre><p>A linear, time-invariant state-space system on the form.</p><p class="math-container">\[ẋ = Ax + Bu
+y = Cx + Du\]</p><p>Transfer functions can also be simulated by converting them to a StateSpace form.</p><p><code>y0</code> and <code>u0</code> can be used to set an operating point, providing them changes the dynamics from an LTI system to the affine system </p><p class="math-container">\[ẋ = Ax + B(u - u0)
+y = Cx + D(u - u0) + y0\]</p><p>For a nonlinear system</p><p class="math-container">\[ẋ = f(x, u)
+y = h(x, u)\]</p><p>linearized around the operating point <code>x₀, u₀</code>, we have <code>y0, u0 = h(x₀, u₀), u₀</code>.</p></div></section></article><div class="admonition is-warning"><header class="admonition-header">Missing docstring.</header><div class="admonition-body"><p>Missing docstring for <code>RobustAndOptimalControl.ss2particles</code>. Check Documenter&#39;s build log for details.</p></div></div><div class="admonition is-warning"><header class="admonition-header">Missing docstring.</header><div class="admonition-body"><p>Missing docstring for <code>bodeplot</code>. Check Documenter&#39;s build log for details.</p></div></div><div class="admonition is-warning"><header class="admonition-header">Missing docstring.</header><div class="admonition-body"><p>Missing docstring for <code>ControlSystemsBase.StateSpace</code>. Check Documenter&#39;s build log for details.</p></div></div><article class="docstring"><header><a class="docstring-binding" id="SymbolicControlSystems.ccode" href="#SymbolicControlSystems.ccode"><code>SymbolicControlSystems.ccode</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">ccode(G; simplify = identity, cse = true)</code></pre><p>Return a string with C-code for filtering a signal <code>u</code> through <code>G</code>. </p><p><strong>Arguments:</strong></p><ul><li><code>G</code>: A linear system</li><li><code>simplify</code>: A function for symbolic simplification. You may try <code>Sympy.simplify</code>, but for large systems, this will take a long time to compute.</li><li><code>cse</code>: Perform common subexpression elimination. This generally improvems the performance of the generated code.</li></ul></div></section></article><article class="docstring"><header><a class="docstring-binding" id="SymbolicControlSystems.print_c_array" href="#SymbolicControlSystems.print_c_array"><code>SymbolicControlSystems.print_c_array</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">print_c_array(io, a::Vector{&lt;:AbstractArray}, t::AbstractVector, name = &quot;mat&quot;; cse = false, s = &quot;&quot;, print_vector = true, print_logic = true, struct_name::Union{Nothing, String} = nothing, struct_type = nothing, ivecname = name * &quot;_interp_vect&quot;)</code></pre><p>Write C-code for interpolating between arrays <code>a</code>. The array <code>t</code> contains the interpolation points.</p></div></section><section><div><pre><code class="nohighlight hljs">print_c_array(io, sys::Vector{&lt;:AbstractStateSpace}, t::AbstractVector, name = &quot;sys&quot;; cse = false, s = &quot;&quot;, en = &quot;&quot;, struct_name::Union{Nothing, String} = nothing, struct_type = nothing)</code></pre><p>Write C-code for an interpolated linear system. The interpolation vector <code>t</code> defines the interpolation points, this vector is expected to be of the same length as the vector of linear systems <code>sys</code>. </p><ul><li><code>s, en</code>: are strings that are appended at the start and end of variables names in the C-code.</li><li><code>struct_name</code>: If provided, the interpolation matrices will be placed inside a struct with this name.</li><li><code>struct_type</code>: If the struct name is used, provide also the C type of the struct.</li></ul></div></section></article><article class="docstring"><header><a class="docstring-binding" id="ModelingToolkit.reorder_states" href="#ModelingToolkit.reorder_states"><code>ModelingToolkit.reorder_states</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia hljs">reorder_states(sys::NamedTuple, old, new)</code></pre><p>Permute the state representation of <code>sys</code> obtained from <a href="#ModelingToolkit.linearize"><code>linearize</code></a> so that the state order is changed from <code>old</code> to <code>new</code> Example:</p><pre><code class="nohighlight hljs">lsys, ssys = linearize(pid, [reference.u, measurement.u], [ctr_output.u])
+desired_order = [int.x, der.x] # States that are present in states(ssys)
+lsys = ModelingToolkit.reorder_states(lsys, states(ssys), desired_order)</code></pre><p>See also <a href="@ref"><code>ModelingToolkit.similarity_transform</code></a></p></div></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../batch_linearization/">« Batch linearization and gain scheduling</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 24 January 2023 19:37">Tuesday 24 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
