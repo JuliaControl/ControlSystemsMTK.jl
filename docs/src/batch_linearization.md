@@ -1,5 +1,5 @@
 # Batch Linearization and gain scheduling
-This example will demonstrate how to linearize a nonlinear ModelingToolkit model in multiple different operating points, and some tools to work with groups of linear models representing the same system in different operating points.
+This example will demonstrate how to linearize a nonlinear ModelingToolkit model in multiple different operating points, and some tools to work with groups of linear models representing the same system in different operating points. We'll end with designing and simulating a [gain-scheduled controller](https://en.wikipedia.org/wiki/Gain_scheduling), i.e., a nonlinear controller created as an interpolation between linear controllers.
 
 
 ## System model
@@ -59,7 +59,7 @@ bodeplot(P, w, legend=:bottomright) # Should look similar to the one above
 ```
 
 ## Controller tuning
-Let's also do some controller tuning for the linearized models above. The function `batch_tune` is not really required here, but it shows how we might go about building more sophisticated tools for batch tuning. In this example, we will tune a PID controller using the function `loopshapingPID`.
+Let's also do some controller tuning for the linearized models above. The function `batch_tune` is not really required here, but it shows how we might go about building more sophisticated tools for batch tuning. In this example, we will tune a PID controller using the function [`loopshapingPID`](@ref).
 ```@example BATCHLIN
 function batch_tune(f, Ps)
     f.(Ps)
@@ -91,7 +91,7 @@ some methods for robust control operate on such circles. Notice how the circles 
 If you plot the Nyquist curve using the `plotly()` backend rather than the default `gr()` backend used here, you can hover the mouse over the curves and see which frequency they correspond to etc. 
 
 ## Gain scheduling
-Above, we tuned one controller for each operating point, wouldn't it be nice if we had some features to simulate a gain-scheduled controller that interpolates between the different controllers depending on the operating pont? [`GainScheduledStateSpace`](@ref) is such a thing, we show how to use it below. For fun, we simulate some reference step responses for each individual controller in the array `Cs` and end with simulating the gain-scheduled controller.
+Above, we tuned one controller for each operating point, wouldn't it be nice if we had some features to simulate a [gain-scheduled controller](https://en.wikipedia.org/wiki/Gain_scheduling) that interpolates between the different controllers depending on the operating pont? [`GainScheduledStateSpace`](@ref) is such a thing, we show how to use it below. For fun, we simulate some reference step responses for each individual controller in the array `Cs` and end with simulating the gain-scheduled controller.
 
 ```@example BATCHLIN
 using OrdinaryDiffEq
