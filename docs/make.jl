@@ -1,6 +1,6 @@
 ENV["GKSwstype"] = 322 # workaround for gr segfault on GH actions
 # ENV["GKS_WSTYPE"]=100 # try this if above does not work
-using Documenter, ControlSystemsMTK, RobustAndOptimalControl, ControlSystemsBase, ModelingToolkit, ModelingToolkitStandardLibrary, MonteCarloMeasurements
+using Documenter, ControlSystemsMTK, RobustAndOptimalControl, ControlSystemsBase, ModelingToolkit, ModelingToolkitStandardLibrary, MonteCarloMeasurements, SymbolicControlSystems
 
 using Plots
 gr()
@@ -9,7 +9,7 @@ gr()
 makedocs(
       sitename = "ControlSystemsMTK Documentation",
       doctest = false,
-      modules = [ControlSystemsMTK, ControlSystemsBase, ModelingToolkit, ModelingToolkitStandardLibrary],
+      modules = [ControlSystemsMTK, ControlSystemsBase, ModelingToolkit, ModelingToolkitStandardLibrary, RobustAndOptimalControl, SymbolicControlSystems],
       strict=[
         :doctest, 
         :linkcheck, 

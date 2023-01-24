@@ -38,3 +38,7 @@ using DataInterpolations
 @named Cgs = GainScheduledStateSpace(Ps, xs, interpolator=LinearInterpolation)
 @test Cgs isa ODESystem
 # This is tested better in the docs
+
+## C-code generation
+# using SymbolicControlSystems
+# code = SymbolicControlSystems.print_c_array(stdout, Ps, xs, "gain_scheduled_controller", struct_name="hej", struct_type="kaj")
