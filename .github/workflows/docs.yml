@@ -9,6 +9,8 @@ on:
 
 jobs:
   build:
+    env:
+      PYTHON: conda
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
