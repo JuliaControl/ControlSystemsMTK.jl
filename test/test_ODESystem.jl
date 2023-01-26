@@ -26,8 +26,14 @@ x0 = Pair[loopgain.P.x[1]=>1]
 
 prob = ODEProblem(fb, x0, (0.0, 10.0))
 sol = solve(prob, Rodas5())
+@test Int(sol2.retcode) == 1
 isinteractive() && plot(sol)
 
+fb              = structural_simplify(sconnect(sin, P))
+prob = ODEProblem(fb, x0, (0.0, 10.0))
+sol2 = solve(prob, Rodas5())
+@test Int(sol2.retcode) == 1
+isinteractive() && plot(sol2)
 
 Pc = complete(P)
 Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0])
@@ -50,6 +56,8 @@ Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.output.u =
 
 P1 = ss(Pc, [Pc.input.u], [Pc.output.u])
 @test P1 == P0
+
+
 
 # === Go the other way, ODESystem -> StateSpace ================================
 x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly

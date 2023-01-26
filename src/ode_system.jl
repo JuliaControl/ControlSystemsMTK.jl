@@ -56,18 +56,25 @@ end
 
 """
     sconnect(input::Function, sys::T; name)
+    sconnect(input::Num,      sys::T; name)
 
 Connect a function `input(t)` to `sys.input`
+
+# Examples:
+```julia
+sconnect(sin, sys)   # Connect a funciton, assumed to be a function of time
+sconnect(sin(t), sys) # Connect a Num
+```
 """
 function sconnect(
-    input::Function,
+    input::Union{Function, Num},
     sys::T;
     name = Symbol("$(sys.name) with input"),
 ) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
     @named output = Blocks.RealOutput()
     T(
         [
-            sys.input.u ~ input(t)
+            sys.input.u ~ (input isa Num ? input : input(t))
             output.u ~ sys.output.u
         ],
         t;
