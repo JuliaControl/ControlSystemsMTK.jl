@@ -43,16 +43,6 @@ function ModelingToolkit.ODESystem(
     osys = Blocks.StateSpace(ssdata(sys)...; x_start = x0, name)
 end
 
-"""
-    sconnect(input, sys::T; name)
-"""
-function sconnect(
-    input,
-    sys::T;
-    name = Symbol("$(sys.name) with input"),
-) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
-    T([conn(input.output, sys.input)], t; systems = [sys, input], name)
-end
 
 """
     sconnect(input::Function, sys::T; name)
@@ -164,8 +154,6 @@ function ControlSystemsBase.ss(
     named_ss(sys, inputs, outputs; kwargs...).sys # just discard the names
 end
 
-inputs(sys) = filter(s -> ModelingToolkit.isinput(s), states(sys))
-outputs(sys) = filter(s -> ModelingToolkit.isoutput(s), states(sys))
 
 """
     RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)
@@ -261,11 +249,11 @@ The motivation for this function is that ModelingToolkit does not guarantee
 - Which states are selected as states after simplification.
 - The order of the states.
 
-The second problem above, the ordering of the states, can be worked around using `reorder_states`, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton needs the linearization (`linear_sys`) as well as the simplified system, both of which are outputs of `linearize`.
+The second problem above, the ordering of the states, can be worked around using `reorder_states`, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton needs the linearization (`linear_sys`) as well as the simplified system, both of which are outputs of [`linearize`](@ref).
 
 # Arguments:
-- `linear_sys`: Output of `linearize`, an object containing a property called `C`. This can be a [`ControlSystemsBase.StateSpace`](@ref) or a `NamedTuple` with a field `C`.
-- `ssys`: Output of `linearize`.
+- `linear_sys`: Output of [`linearize`](@ref), an object containing a property called `C`. This can be a [`ControlSystemsBase.StateSpace`](@ref) or a `NamedTuple` with a field `C`.
+- `ssys`: Output of [`linearize`](@ref).
 - `costs`: A vector of pairs
 """
 function build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::AbstractVector{<:Pair})
@@ -295,9 +283,10 @@ The motivation for this function is that ModelingToolkit does not guarantee
 - Which states are selected as states after simplification.
 - The order of the states.
 
-The second problem above, the ordering of the states, can be worked around using `reorder_states`, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton needs the linearization (`matrices`) as well as the simplified system, both of which are outputs of `linearize`.
+The second problem above, the ordering of the states, can be worked around using `reorder_states`, but the first problem cannot be solved by trivial reordering. This function thus accepts an array of costs for a user-selected state realization, and assembles the correct cost matrix for the state realization selected by MTK. To do this, the funciton performs a linearization between inputs and the cost outputs. The linearization is used to determine the matrix entries belonging to states that are not part of the realization chosen by MTK.
 
 # Arguments:
+- `sys`: The system to be linearized (not simplified).
 - `inputs`: A vector of variables that are to be considered controlled inputs for the LQR controller.
 - `costs`: A vector of pairs.
 """
