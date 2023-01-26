@@ -26,7 +26,7 @@ x0 = Pair[loopgain.P.x[1]=>1]
 
 prob = ODEProblem(fb, x0, (0.0, 10.0))
 sol = solve(prob, Rodas5())
-@test Int(sol2.retcode) == 1
+@test Int(sol.retcode) == 1
 isinteractive() && plot(sol)
 
 fb              = structural_simplify(sconnect(sin, P))
