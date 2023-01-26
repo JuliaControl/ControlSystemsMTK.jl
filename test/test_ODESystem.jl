@@ -29,7 +29,24 @@ sol = solve(prob, Rodas5())
 isinteractive() && plot(sol)
 
 
+Pc = complete(P)
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0])
+@test Q[] ≈ 2.0
 
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.output.u => 2.0])
+@test Q[] ≈ 2.0
+
+#Mix states and outputs
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0, Pc.output.u => 3])
+@test Q[] ≈ 2.0 + 3
+
+matrices, ssys = linearize(Pc, [Pc.input.u], [Pc.output.u])
+
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.x[1] => 2.0])
+@test Q[] ≈ 2.0
+
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.output.u => 2.0])
+@test Q[] ≈ 2.0
 
 # === Go the other way, ODESystem -> StateSpace ================================
 x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
