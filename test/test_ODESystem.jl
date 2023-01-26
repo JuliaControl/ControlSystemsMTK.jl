@@ -48,6 +48,9 @@ Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.x[1] => 2.
 Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.output.u => 2.0])
 @test Q[] ≈ 2.0
 
+P1 = ss(Pc, [Pc.input.u], [Pc.output.u])
+@test P1 == P0
+
 # === Go the other way, ODESystem -> StateSpace ================================
 x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
 @unpack input, output = P

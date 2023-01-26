@@ -151,9 +151,10 @@ numeric(x::Num) = x.val
 function ControlSystemsBase.ss(
     sys::ModelingToolkit.AbstractTimeDependentSystem,
     inputs,
-    outputs,
+    outputs;
+    kwargs...
 )
-    named_ss(sys, inputs, outputs).sys # just discard the names
+    named_ss(sys, inputs, outputs; kwargs...).sys # just discard the names
 end
 
 inputs(sys) = filter(s -> ModelingToolkit.isinput(s), states(sys))
