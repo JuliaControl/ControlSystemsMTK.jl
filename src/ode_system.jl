@@ -160,6 +160,9 @@ end
 
 Convert an `ODESystem` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`, reproduced below.
 
+This method automatically converts systems that MTK has failed to produce a proper form for into a proper linear statespace system. Learn more about how that is done here:
+https://juliacontrol.github.io/ControlSystemsMTK.jl/dev/#Internals:-Transformation-of-non-proper-models-to-proper-statespace-form
+
 $(@doc(ModelingToolkit.linearize))
 """
 function RobustAndOptimalControl.named_ss(
@@ -169,10 +172,9 @@ function RobustAndOptimalControl.named_ss(
     kwargs...,
 )
 
-    if inputs isa Symbol
-        outputs isa Symbol || throw(ArgumentError("inputs and outputs must be either both symbols or both vectors of symbols"))
-        nu = ny = 1
-    else # map symbols to symbolic variables
+    if isa(inputs,  Symbol)
+        nu = 1
+    else
         inputs = map(inputs) do inp
             if inp isa ODESystem
                 @variables u(t)
@@ -185,6 +187,11 @@ function RobustAndOptimalControl.named_ss(
                 inp
             end
         end
+        nu = length(inputs)
+    end
+    if isa(outputs,  Symbol)
+        ny = 1
+    else
         outputs = map(outputs) do out
             if out isa ODESystem
                 @variables u(t)
@@ -197,7 +204,6 @@ function RobustAndOptimalControl.named_ss(
                 out
             end
         end
-        nu = length(inputs)
         ny = length(outputs)
     end
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)

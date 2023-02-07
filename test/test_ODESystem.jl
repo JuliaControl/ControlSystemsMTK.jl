@@ -172,3 +172,53 @@ if isinteractive()
     plot(sol.t, sol[P.x[1]] - sol[fb.r.output.u], lab = "qₘ", title = "Control error")
     plot!(sol.t, sol[P.x[3]] - sol[fb.r.output.u], lab = "qₐ")
 end
+
+## Double-mass model in MTK
+using ModelingToolkit, OrdinaryDiffEq, LinearAlgebra
+using ModelingToolkitStandardLibrary.Mechanical.Rotational
+using ModelingToolkitStandardLibrary.Blocks: Sine
+using ModelingToolkit: connect
+import ModelingToolkitStandardLibrary.Blocks
+t = Blocks.t
+
+# Parameters
+m1 = 1
+m2 = 1
+k = 1000 # Spring stiffness
+c = 10   # Damping coefficient
+
+@named inertia1 = Inertia(; J = m1)
+@named inertia2 = Inertia(; J = m2)
+
+@named spring = Spring(; c = k)
+@named damper = Damper(; d = c)
+
+@named torque = Torque()
+
+function SystemModel(u=nothing; name=:model)
+    @named sens = Rotational.AngleSensor()
+    eqs = [
+        connect(torque.flange, inertia1.flange_a)
+        connect(inertia1.flange_b, spring.flange_a, damper.flange_a)
+        connect(inertia2.flange_a, spring.flange_b, damper.flange_b)
+        connect(inertia2.flange_b, sens.flange)
+    ]
+    if u !== nothing 
+        push!(eqs, connect(u.output, :u, torque.tau))
+        return @named model = ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper, u])
+    end
+    ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper], name)
+end
+
+model = SystemModel() |> complete
+
+lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
+@test -1000 ∈ lsys.A
+@test -10 ∈ lsys.A
+@test 1000 ∈ lsys.A
+@test 10 ∈ lsys.A
+@test 1 ∈ lsys.B
+@test 1 ∈ lsys.C
+
+# model = SystemModel(Sine(frequency=30/2pi, name=:u)) |> complete
+# lsys = named_ss(model, :u, [model.inertia1.phi, model.inertia2.phi])
