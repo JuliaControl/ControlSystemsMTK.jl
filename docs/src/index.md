@@ -141,4 +141,4 @@ sE &= A_e x_e + B_e u
 where $X_u$ is a new algebraic state variable and $I_u$ is a selector matrix that picks out the differentiated inputs appearing in $\dot u$ (if all inputs appear, $I_u = I$).
 
 This model may be converted to a proper statespace model (if the system is indeed proper) using `DescriptorSystems.dss2ss`.
-All of this is handled automatically by `named_ss(sys)`.
+All of this is handled automatically by [`named_ss`](@ref).
