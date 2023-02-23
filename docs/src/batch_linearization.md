@@ -1,6 +1,8 @@
 # Batch Linearization and gain scheduling
 This example will demonstrate how to linearize a nonlinear ModelingToolkit model in multiple different operating points, and some tools to work with groups of linear models representing the same system in different operating points. We'll end with designing and simulating a [gain-scheduled controller](https://en.wikipedia.org/wiki/Gain_scheduling), i.e., a nonlinear controller created as an interpolation between linear controllers.
 
+!!! note "What is an operating point?"
+    An operating point is typically understood as a tuple of the form ``(x, u)``, where ``x`` is the state vector and ``u`` is the input vector. However, we may choose to include *parameters* ``p`` in the operating point as well. This may be useful when some parameters are uncertain or time varying, and we want to perform analysis over multiple possible parameter values.
 
 ## System model
 The model will be a simple Duffing oscillator:
@@ -103,8 +105,8 @@ connect    = ModelingToolkit.connect
 
 closed_loop_eqs = [
     connect(ref.output, F.input)
-    connect(F.output, fb.input1)
-    connect(duffing.y, fb.input2)
+    connect(F.output,  :r, fb.input1) # Add an analysis point :r
+    connect(duffing.y, :y, fb.input2) # Add an analysis point :y
 ]
 plot(layout=2)
 
@@ -148,6 +150,16 @@ Cs_disc = c2d.(Cs, 0.05, :tustin) # Discretize the controller before generating 
 code = SymbolicControlSystems.print_c_array(stdout, Cs_disc[1:7:end], xs[1:7:end], "Cs")
 ```
 The generated code starts by defining the interpolation vector `xs`, this variable is called `Cs_interp_vect` in the generated code. The code then defines all the ``A`` matrices as a 3-dimensional array, followed by a function that performs the interpolation `interpolate_Cs_A`. This function takes the output array as the first argument, a pointer to the 3D array with interpolation matrices, the interpolation vector as well as the interpolation variable `t`, in this document called ``v``. The same code is then repeated for the matrices ``B,C,D`` as well if they require interpolation (if they are all the same, no interpolation code is written). 
+
+## Linearize around a trajectory
+We can linearize around a trajectory obtain from `solve` using the function [`trajectory_ss`](@ref). We provide it with a vector of time points along the trajectory at which to linearize, and in this case we specify the inputs and outputs to linearize between as analysis points `:r` and `:y`.
+```@example BATCHLIN
+timepoints = 0:0.01:8
+Ps2, ssys = trajectory_ss(closed_loop, :r, :y, sol; t=timepoints)
+bodeplot(Ps2, w, legend=false)
+```
+
+Internally, [`trajectory_ss`](@ref) works very much the same as [`batch_ss`](@ref), but constructs operating points automatically along the trajectory. This requires that the solution contains the states of the simplified system, accessible through the `idxs` argument like `sol(t, idxs=x)`. By linearizing the same system as we simulated, we ensure that this condition holds, doing so requires that we specify the inputs and outputs as analysis points rather than as variables.
 
 
 ## Summary
