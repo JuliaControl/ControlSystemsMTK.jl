@@ -5,6 +5,7 @@ version = "0.1.7"
 
 [deps]
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
+DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 ModelingToolkitStandardLibrary = "16a59e39-deab-5bd0-87e4-056b12336739"
@@ -14,6 +15,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ControlSystemsBase = "1.0.1"
+DataInterpolations = "3.11"
 ModelingToolkit = "8.26"
 ModelingToolkitStandardLibrary = "1.5"
 OrdinaryDiffEq = "6"
@@ -24,10 +26,9 @@ julia = "1.6"
 
 [extras]
 ControlSystems = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
-DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 MonteCarloMeasurements = "0987c9cc-fe09-11e8-30f0-b96dd679fdca"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "ControlSystems", "DataInterpolations", "MonteCarloMeasurements", "OrdinaryDiffEq"]
+test = ["Test", "ControlSystems", "MonteCarloMeasurements", "OrdinaryDiffEq"]

@@ -318,7 +318,6 @@ end
 
 function batch_linearize(sys, inputs, outputs, ops::AbstractVector{<:AbstractDict}; t = 0.0,
         allow_input_derivatives = false,
-        zero_dummy_der = false,
         kwargs...)
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
     lins = map(ops) do op
@@ -331,7 +330,6 @@ end
     batch_ss(sys, inputs, outputs, ops::AbstractVector{<:AbstractDict};
                 t = 0.0,
                 allow_input_derivatives = false,
-                zero_dummy_der = false,
                 kwargs...)
 
 Linearize `sys` in multiple operating points `ops::Vector{Dict}`. Returns a vector of `StateSpace` objects and the simplified system.
@@ -397,13 +395,37 @@ nyquistplot(P * C,
             Ms_circles = [1.5, 2],
             Mt_circles = [1.5, 2])
 
-# Fit circles that encircles the Nyquist curve for each frequency
+# Fit circles that encircle the Nyquist curve for each frequency
 centers, radii = fit_complex_perturbations(P * C, w; relative = false, nominal = :center)
 nyquistcircles!(w, centers, radii, ylims = (-4, 1), xlims = (-3, 4))
 ```
 """
 function batch_ss(args...; kwargs...)
     lins, ssys = batch_linearize(args...; kwargs...)
+    [ss(l...) for l in lins], ssys
+end
+
+"""
+    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = sol.t, kwargs...)
+
+Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `StateSpace` objects and the simplified system.
+
+# Arguments:
+- `inputs`: A vector of variables or analysis points.
+- `outputs`: A vector of variables or analysis points.
+- `sol`: An ODE solution object. This solution must contain the states of the simplified system, accessible through the `idxs` argument like `sol(t, idxs=x)`.
+- `t`: Time points along the solution trajectory at which to linearize. The returned array of `StateSpace` objects will be of the same length as `t`.
+- `kwargs`: Are sent to the linearization functions.
+"""
+function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
+    x = states(ssys)
+    ops = map(t) do ti
+        Dict(x => sol(ti, idxs=x) for x in x)
+    end
+    lins = map(zip(ops, t)) do (op, t)
+        linearize(ssys, lin_fun; op, t, allow_input_derivatives)
+    end
     [ss(l...) for l in lins], ssys
 end
 
