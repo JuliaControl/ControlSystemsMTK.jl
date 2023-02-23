@@ -50,7 +50,6 @@ import ModelingToolkitStandardLibrary.Blocks
 @named fb = Blocks.Add(k2=-1)
 @named ref = Blocks.Square(frequency=1/6, amplitude=0.5, offset=0.5, start_time=1)
 @named F = Blocks.SecondOrder(w=10, d=0.7)
-connect = ModelingToolkit.connect
 @named C = ODESystem(pid(1,1,0; state_space=true, Tf=0.01))
 
 
@@ -69,12 +68,10 @@ prob = ODEProblem(ssys, [], (0.0, 8.0))
 sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
 # plot(sol)
 
-## Linenarize around trajectory
+## Linearize around trajectory
 
 time = 0:0.1:8
 inputs, outputs = [duffing.u.u], [duffing.y.u]
 Ps2, ssys = trajectory_ss(closed_loop, :r, :y, sol; t=time)
 @test length(Ps2) == length(time)
 # bodeplot(Ps2)
-
-named_ss
