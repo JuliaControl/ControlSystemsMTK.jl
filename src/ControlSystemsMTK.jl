@@ -19,7 +19,7 @@ using LinearAlgebra
 using ModelingToolkit, ControlSystemsBase
 using ControlSystemsBase: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
 # using ControlSystemIdentification
-using RobustAndOptimalControl
+using RobustAndOptimalControl, MonteCarloMeasurements
 import ModelingToolkit: ODESystem, FnType, Symbolics
 using ModelingToolkit: states, observed, isdifferential
 using ModelingToolkit.Symbolics

@@ -406,7 +406,7 @@ function batch_ss(args...; kwargs...)
 end
 
 """
-    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = sol.t, fuzzer=nothing, kwargs...)
+    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = sol.t, fuzzer=nothing, verbose = true, kwargs...)
 
 Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `StateSpace` objects and the simplified system.
 
@@ -418,7 +418,7 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `fuzzer`: A function that takes an operating point dictionary and returns an array of "fuzzed" operating points. This is useful for adding noise/uncertainty to the operating points along the trajectory. See [`ControlSystemsMTK.fuzz`](@ref) for such a function.
 - `kwargs`: Are sent to the linearization functions.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, fuzzer = nothing, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
     x = states(ssys)
     defs = ModelingToolkit.defaults(sys)
@@ -443,12 +443,12 @@ function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivat
                     end
                 end
                 out = sol(ti, Val{1}, idxs=[Num(var)])[]
-                println("Could not find variable $x in solution, returning $(out) obtained through interpolation of $var.")
+                verbose && println("Could not find variable $x in solution, returning $(out) obtained through interpolation of $var.")
                 return out
             end
 
             val = get(defs, x, 0.0)
-            println("Could not find variable $x in solution, returning $val.")
+            verbose && println("Could not find variable $x in solution, returning $val.")
             return val
         end
     end
@@ -472,12 +472,18 @@ end
     fuzz(op, p; N = 10)
 
 "Fuzz" an operating point `op::Dict` by changing each non-zero value to an uncertain number with multiplicative uncertainty `p`, represented by `N` samples, i.e., `p = 0.1` means that the value is multiplied by a `N` numbers between 0.9 and 1.1.
+
+To make use of this function in [`trajectory_ss`](@ref), pass something like
+```
+fuzzer = op -> ControlSystemsMTK.fuzz(op, 0.02; N=10)
+```
+to fuzz each operating point 10 times with a 2% uncertainty. The resulting number of operating points will increase by 10x.
 """
 function fuzz(op, p; N=10)
     op = map(collect(keys(op))) do key
         val = op[key]
         aval = abs(val)
-        uval = iszero(val) ? 0.0 : Particles(N, Uniform(val-p*aval, val+p*aval))
+        uval = iszero(val) ? 0.0 : Particles(N, MonteCarloMeasurements.Uniform(val-p*aval, val+p*aval))
         key => uval
     end |> Dict
     MonteCarloMeasurements.particle_dict2dict_vec(op)
