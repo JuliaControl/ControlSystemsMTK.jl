@@ -415,7 +415,7 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `outputs`: A vector of variables or analysis points.
 - `sol`: An ODE solution object. This solution must contain the states of the simplified system, accessible through the `idxs` argument like `sol(t, idxs=x)`.
 - `t`: Time points along the solution trajectory at which to linearize. The returned array of `StateSpace` objects will be of the same length as `t`.
-- `fuzzer`: A function that takes an operating point dictionary and returns an array of "fuzzed" operating points. This is useful for adding noise/uncertainty to the operating points along the trajectory.
+- `fuzzer`: A function that takes an operating point dictionary and returns an array of "fuzzed" operating points. This is useful for adding noise/uncertainty to the operating points along the trajectory. See [`ControlSystemsMTK.fuzz`](@ref) for such a function.
 - `kwargs`: Are sent to the linearization functions.
 """
 function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, fuzzer = nothing, kwargs...)
@@ -444,7 +444,20 @@ function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivat
     lins = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
     end
-    [ss(l...) for l in lins], ssys
+
+"""
+    fuzz(op, p; N = 10)
+
+"Fuzz" an operating point `op::Dict` by changing each non-zero value to an uncertain number with multiplicative uncertainty `p`, represented by `N` samples, i.e., `p = 0.1` means that the value is multiplied by a `N` numbers between 0.9 and 1.1.
+"""
+function fuzz(op, p; N=10)
+    op = map(collect(keys(op))) do key
+        val = op[key]
+        aval = abs(val)
+        uval = iszero(val) ? 0.0 : Particles(N, Uniform(val-p*aval, val+p*aval))
+        key => uval
+    end |> Dict
+    MonteCarloMeasurements.particle_dict2dict_vec(op)
 end
 
 

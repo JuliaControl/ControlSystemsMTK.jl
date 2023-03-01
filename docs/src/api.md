@@ -23,4 +23,5 @@ ControlSystemsBase.StateSpace
 SymbolicControlSystems.ccode
 SymbolicControlSystems.print_c_array
 ModelingToolkit.reorder_states
+ControlSystemsMTK.fuzz
 ```
