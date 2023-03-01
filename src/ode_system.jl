@@ -406,7 +406,7 @@ function batch_ss(args...; kwargs...)
 end
 
 """
-    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = sol.t, kwargs...)
+    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = sol.t, fuzzer=nothing, kwargs...)
 
 Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `StateSpace` objects and the simplified system.
 
@@ -415,13 +415,31 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `outputs`: A vector of variables or analysis points.
 - `sol`: An ODE solution object. This solution must contain the states of the simplified system, accessible through the `idxs` argument like `sol(t, idxs=x)`.
 - `t`: Time points along the solution trajectory at which to linearize. The returned array of `StateSpace` objects will be of the same length as `t`.
+- `fuzzer`: A function that takes an operating point dictionary and returns an array of "fuzzed" operating points. This is useful for adding noise/uncertainty to the operating points along the trajectory.
 - `kwargs`: Are sent to the linearization functions.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, fuzzer = nothing, kwargs...)
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
     x = states(ssys)
+    defs = ModelingToolkit.defaults(sys)
+    function robust_getter(ti, x)
+        try
+            return sol(ti, idxs=x)
+        catch
+            val = get(defs, x, 0.0)
+            println("Could not find variable $x in solution, returning $val.")
+            return val
+        end
+    end
     ops = map(t) do ti
-        Dict(x => sol(ti, idxs=x) for x in x)
+        Dict(x => robust_getter(ti, x) for x in x)
+    end
+    if fuzzer !== nothing
+        opsv = map(ops) do op
+            fuzzer(op)
+        end
+        ops = reduce(vcat, opsv)
+        t = repeat(t, inner = length(ops) ÷ length(t))
     end
     lins = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
