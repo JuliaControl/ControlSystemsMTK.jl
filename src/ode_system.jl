@@ -426,6 +426,27 @@ function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivat
         try
             return sol(ti, idxs=x)
         catch
+            n = string((x))
+            if occursin("ˍt(", n)
+                n = split(n, "ˍt(")[1]
+                sp = split(n, '₊')
+                varname = sp[end]
+                local var
+                let t = ModelingToolkit.get_iv(sys)
+                    @variables var(t)
+                end
+                ModelingToolkit.@set! var.val.f.name = Symbol(varname)
+                namespaces = sp[1:end-1]
+                if !isempty(namespaces)
+                    for ns in reverse(namespaces)
+                        var = ModelingToolkit.renamespace(Symbol(ns), var)
+                    end
+                end
+                out = sol(ti, Val{1}, idxs=[Num(var)])[]
+                println("Could not find variable $x in solution, returning $(out) obtained through interpolation of $var.")
+                return out
+            end
+
             val = get(defs, x, 0.0)
             println("Could not find variable $x in solution, returning $val.")
             return val
@@ -444,6 +465,8 @@ function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivat
     lins = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
     end
+    (; linsystems = [ss(l...) for l in lins], ssys, ops)
+end
 
 """
     fuzz(op, p; N = 10)
