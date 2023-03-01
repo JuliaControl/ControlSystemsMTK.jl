@@ -416,44 +416,15 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `sol`: An ODE solution object. This solution must contain the states of the simplified system, accessible through the `idxs` argument like `sol(t, idxs=x)`.
 - `t`: Time points along the solution trajectory at which to linearize. The returned array of `StateSpace` objects will be of the same length as `t`.
 - `fuzzer`: A function that takes an operating point dictionary and returns an array of "fuzzed" operating points. This is useful for adding noise/uncertainty to the operating points along the trajectory. See [`ControlSystemsMTK.fuzz`](@ref) for such a function.
+- `verbose`: If `true`, print warnings for variables that are not found in `sol`.
 - `kwargs`: Are sent to the linearization functions.
 """
 function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
     x = states(ssys)
     defs = ModelingToolkit.defaults(sys)
-    function robust_getter(ti, x)
-        try
-            return sol(ti, idxs=x)
-        catch
-            n = string((x))
-            if occursin("ˍt(", n)
-                n = split(n, "ˍt(")[1]
-                sp = split(n, '₊')
-                varname = sp[end]
-                local var
-                let t = ModelingToolkit.get_iv(sys)
-                    @variables var(t)
-                end
-                ModelingToolkit.@set! var.val.f.name = Symbol(varname)
-                namespaces = sp[1:end-1]
-                if !isempty(namespaces)
-                    for ns in reverse(namespaces)
-                        var = ModelingToolkit.renamespace(Symbol(ns), var)
-                    end
-                end
-                out = sol(ti, Val{1}, idxs=[Num(var)])[]
-                verbose && println("Could not find variable $x in solution, returning $(out) obtained through interpolation of $var.")
-                return out
-            end
-
-            val = get(defs, x, 0.0)
-            verbose && println("Could not find variable $x in solution, returning $val.")
-            return val
-        end
-    end
     ops = map(t) do ti
-        Dict(x => robust_getter(ti, x) for x in x)
+        Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
     end
     if fuzzer !== nothing
         opsv = map(ops) do op
@@ -469,7 +440,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivat
 end
 
 """
-    fuzz(op, p; N = 10)
+    fuzz(op, p; N = 10, parameters = true, variables = true)
 
 "Fuzz" an operating point `op::Dict` by changing each non-zero value to an uncertain number with multiplicative uncertainty `p`, represented by `N` samples, i.e., `p = 0.1` means that the value is multiplied by a `N` numbers between 0.9 and 1.1.
 
@@ -478,17 +449,69 @@ To make use of this function in [`trajectory_ss`](@ref), pass something like
 fuzzer = op -> ControlSystemsMTK.fuzz(op, 0.02; N=10)
 ```
 to fuzz each operating point 10 times with a 2% uncertainty. The resulting number of operating points will increase by 10x.
+
+`parameters` and `variables` indicate whether to fuzz parameters and state variables, respectively.
 """
-function fuzz(op, p; N=10)
+function fuzz(op, p; N=10, parameters = true, variables = true)
     op = map(collect(keys(op))) do key
+        @show par = ModelingToolkit.isparameter(key)
         val = op[key]
+        par && !parameters && return (key => val)
+        !par && !variables && return (key => val)
         aval = abs(val)
-        uval = iszero(val) ? 0.0 : Particles(N, MonteCarloMeasurements.Uniform(val-p*aval, val+p*aval))
+        @show issymbolic(val), val
+        uval = issymbolic(val) ? val : iszero(val) ? 0.0 : Particles(N, MonteCarloMeasurements.Uniform(val-p*aval, val+p*aval))
         key => uval
     end |> Dict
     MonteCarloMeasurements.particle_dict2dict_vec(op)
 end
 
+MonteCarloMeasurements.vecindex(p::Symbolics.BasicSymbolic,i) = p
+issymbolic(x) = x isa Union{Symbolics.Num, Symbolics.BasicSymbolic}
+
+"""
+    robust_sol_getindex(sol, ti, x, defs; verbose = true)
+
+Extract symbolic variable `x` from ode solution `sol` at time `ti`. This operation may fail
+- If the variable is a dummy derivative that is not present in the solution. In this case, the value is reconstructed by derivative interpolation.
+- The var is not present at all, in this case, the default value in `defs` is returned.
+
+# Arguments:
+- `sol`: An ODESolution
+- `ti`: Time point
+- `defs`: A Dict with default values. 
+- `verbose`: Print a warning if the variable is not found in the solution.
+"""
+function robust_sol_getindex(sol, ti, x, defs; verbose = true)
+    try
+        return sol(ti, idxs=x)
+    catch
+        n = string((x))
+        if occursin("ˍt(", n)
+            n = split(n, "ˍt(")[1]
+            sp = split(n, '₊')
+            varname = sp[end]
+            local var
+            let t = Symbolics.arguments(Symbolics.unwrap(x))[1]
+                @variables var(t)
+            end
+            ModelingToolkit.@set! var.val.f.name = Symbol(varname)
+            namespaces = sp[1:end-1]
+            if !isempty(namespaces)
+                for ns in reverse(namespaces)
+                    var = ModelingToolkit.renamespace(Symbol(ns), var)
+                end
+            end
+            out = sol(ti, Val{1}, idxs=[Num(var)])[]
+            verbose && println("Could not find variable $x in solution, returning $(out) obtained through interpolation of $var.")
+            return out
+        end
+
+        val = get(defs, x, 0.0)
+        verbose && println("Could not find variable $x in solution, returning $val.")
+        return val
+    end
+end
 
 maybe_interp(interpolator, x, t) = allequal(x) ? x[1] : interpolator(x, t)
 
