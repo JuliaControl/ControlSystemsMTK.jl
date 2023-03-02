@@ -363,14 +363,12 @@ ops = map(1:N) do i
     op = Dict(x => sample_within_bounds(bounds[x]) for x in keys(bounds) if isfinite(bounds[x][1]))
 end
 
-
 Ps, ssys = batch_ss(duffing, [u], [y], ops)
 w = exp10.(LinRange(-2, 2, 200))
 bodeplot(Ps, w)
 P = RobustAndOptimalControl.ss2particles(Ps) # convert to a single StateSpace system with `Particles` as coefficients.
 bodeplot(P, w) # Should look similar to the one above
 ```
-
 
 Let's also do some tuning for the linearized models above
 ```
@@ -399,6 +397,8 @@ nyquistplot(P * C,
 centers, radii = fit_complex_perturbations(P * C, w; relative = false, nominal = :center)
 nyquistcircles!(w, centers, radii, ylims = (-4, 1), xlims = (-3, 4))
 ```
+
+See also [`trajectory_ss`](@ref) and [`fuzz`](@ref).
 """
 function batch_ss(args...; kwargs...)
     lins, ssys = batch_linearize(args...; kwargs...)
@@ -420,6 +420,8 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `kwargs`: Are sent to the linearization functions.
 """
 function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
+    maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
+    minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
     x = states(ssys)
     defs = ModelingToolkit.defaults(sys)
@@ -444,13 +446,23 @@ end
 
 "Fuzz" an operating point `op::Dict` by changing each non-zero value to an uncertain number with multiplicative uncertainty `p`, represented by `N` samples, i.e., `p = 0.1` means that the value is multiplied by a `N` numbers between 0.9 and 1.1.
 
+`parameters` and `variables` indicate whether to fuzz parameters and state variables, respectively.
+
+This function modifies all variables the same way. For more fine-grained control, load the `MonteCarloMeasurements` package and use the `Particles` type directly, followed by `MonteCarloMeasurements.particle_dict2dict_vec(op)`, i.e., the following makes `uncertain_var` uncertain with a 10% uncertainty:
+```julia
+using MonteCarloMeasurements
+op = ModelingToolkit.defaults(sys)
+op[uncertain_var] = op[uncertain_var] * Particles(10, Uniform(0.9, 1.1))
+ops = MonteCarloMeasurements.particle_dict2dict_vec(op)
+batch_ss(model, inputs, outputs, ops)
+```
+If you have more than one uncertain parameter, it's important to use the same number of particles for all of them (10 in the example above).
+
 To make use of this function in [`trajectory_ss`](@ref), pass something like
 ```
 fuzzer = op -> ControlSystemsMTK.fuzz(op, 0.02; N=10)
 ```
 to fuzz each operating point 10 times with a 2% uncertainty. The resulting number of operating points will increase by 10x.
-
-`parameters` and `variables` indicate whether to fuzz parameters and state variables, respectively.
 """
 function fuzz(op, p; N=10, parameters = true, variables = true)
     op = map(collect(keys(op))) do key
