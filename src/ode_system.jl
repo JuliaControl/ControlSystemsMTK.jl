@@ -406,7 +406,7 @@ function batch_ss(args...; kwargs...)
 end
 
 """
-    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = sol.t, fuzzer=nothing, verbose = true, kwargs...)
+    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), fuzzer=nothing, verbose = true, kwargs...)
 
 Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `StateSpace` objects and the simplified system.
 
@@ -419,7 +419,7 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `verbose`: If `true`, print warnings for variables that are not found in `sol`.
 - `kwargs`: Are sent to the linearization functions.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
@@ -440,6 +440,9 @@ function trajectory_ss(sys, inputs, outputs, sol; t = sol.t, allow_input_derivat
     end
     (; linsystems = [ss(l...) for l in lins], ssys, ops)
 end
+
+"_max_100(t) = length(t) > 100 ? range(extrema(t)..., 100) : t"
+_max_100(t) = length(t) > 100 ? range(extrema(t)..., 100) : t
 
 """
     fuzz(op, p; N = 10, parameters = true, variables = true)
@@ -466,12 +469,11 @@ to fuzz each operating point 10 times with a 2% uncertainty. The resulting numbe
 """
 function fuzz(op, p; N=10, parameters = true, variables = true)
     op = map(collect(keys(op))) do key
-        @show par = ModelingToolkit.isparameter(key)
+        par = ModelingToolkit.isparameter(key)
         val = op[key]
         par && !parameters && return (key => val)
         !par && !variables && return (key => val)
         aval = abs(val)
-        @show issymbolic(val), val
         uval = issymbolic(val) ? val : iszero(val) ? 0.0 : Particles(N, MonteCarloMeasurements.Uniform(val-p*aval, val+p*aval))
         key => uval
     end |> Dict
