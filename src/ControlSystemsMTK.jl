@@ -22,8 +22,8 @@ using ControlSystemsBase: ssdata, AbstractStateSpace, Continuous, nstates, noutp
 using RobustAndOptimalControl, MonteCarloMeasurements
 import ModelingToolkit: ODESystem, FnType, Symbolics
 using ModelingToolkit: states, observed, isdifferential
-using ModelingToolkit.Symbolics
-using ModelingToolkit.Symbolics: jacobian, solve_for
+using Symbolics
+using Symbolics: jacobian, solve_for
 using UnPack
 # using Optim, Optim.LineSearches
 
