@@ -663,3 +663,13 @@ We can however use the PartitionedStateSpace to prove stability of the closed-ll
 #     P = ControlSystemsBase.PartitionedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, s1.timeevol)
 #     # ControlSystemsBase.HammersteinWienerSystem(P, interp_gains)
 # end
+
+
+function Symbolics.build_function(sys::AbstractStateSpace, args...; kwargs...)
+    ControlSystemsBase.numeric_type(sys) <: Num || error("Expected a system with symbolc coefficients. Call linearize_symbolic to obtain symbolic jacobians")
+    Afun, _ = Symbolics.build_function(sys.A, args...; kwargs...)
+    Bfun, _ = Symbolics.build_function(sys.B, args...; kwargs...)
+    Cfun, _ = Symbolics.build_function(sys.C, args...; kwargs...)
+    Dfun, _ = Symbolics.build_function(sys.D, args...; kwargs...)
+    (args...) -> HeteroStateSpace(Afun(args...), Bfun(args...), Cfun(args...), Dfun(args...), sys.timeevol)
+end
