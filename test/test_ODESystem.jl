@@ -222,3 +222,19 @@ lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2
 
 # model = SystemModel(Sine(frequency=30/2pi, name=:u)) |> complete
 # lsys = named_ss(model, :u, [model.inertia1.phi, model.inertia2.phi])
+
+##
+mats, ssys = ModelingToolkit.linearize_symbolic(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
+sys = ss((mats...,)[1:4]...)
+
+
+defs = ModelingToolkit.defaults(ssys)
+sympars = ModelingToolkit.parameters(ssys)
+_, p = ModelingToolkit.get_u0_p(ssys, defs, defs)
+
+fun = Symbolics.build_function(sys, sympars; expression=Val{false}, force_SA=true)
+fun(p)
+@test @allocated(fun(p)) <= 256
+static_lsys = fun(p)
+
+@test static_lsys == lsys.sys
