@@ -225,17 +225,18 @@ function RobustAndOptimalControl.named_ss(
         Ce = [fm(matrices.C) zeros(ny, ndu)]
         De = fm(matrices.D[:, 1:nu])
         dsys = dss(Ae, E, Be, Ce, De)
-        sys = ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
+        lsys = ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
         # unames = [unames; Symbol.("der_" .* string.(unames))]
         # sys = ss(matrices...)
     else
-        sys = ss(matrices...)
+        lsys = ss(matrices...)
     end
     named_ss(
-        sys;
+        lsys;
         x = symstr.(states(ssys)),
         u = unames,
         y = symstr.(outputs),
+        name = string(Base.nameof(sys)),
     )
 end
 
