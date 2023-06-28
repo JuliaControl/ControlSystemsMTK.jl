@@ -250,7 +250,7 @@ end
 """
     build_quadratic_cost_matrix(linear_sys, ssys::ODESystem, costs::Vector{Pair})
 
-For a system that has been linearized, assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of simplified system `ssys` accoring to the vector of pairs `costs`.
+For a system that has been linearized, assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of simplified system `ssys` according to the vector of pairs `costs`.
 
 The motivation for this function is that ModelingToolkit does not guarantee
 - Which states are selected as states after simplification.
@@ -284,7 +284,7 @@ end
 """
     build_quadratic_cost_matrix(sys::ODESystem, inputs::Vector, costs::Vector{Pair}; kwargs...)
 
-Assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of system `sys` accoring to the vector of pairs `costs`.
+Assemble a quadratic cost matrix (for LQR or Kalman filtering) that penalizes states or outputs of system `sys` according to the vector of pairs `costs`.
 
 The motivation for this function is that ModelingToolkit does not guarantee
 - Which states are selected as states after simplification.
@@ -667,7 +667,7 @@ We can however use the PartitionedStateSpace to prove stability of the closed-ll
 
 
 function Symbolics.build_function(sys::AbstractStateSpace, args...; kwargs...)
-    ControlSystemsBase.numeric_type(sys) <: Num || error("Expected a system with symbolc coefficients. Call linearize_symbolic to obtain symbolic jacobians")
+    ControlSystemsBase.numeric_type(sys) <: Num || error("Expected a system with symbolic coefficients. Call linearize_symbolic to obtain symbolic jacobians")
     Afun, _ = Symbolics.build_function(sys.A, args...; kwargs...)
     Bfun, _ = Symbolics.build_function(sys.B, args...; kwargs...)
     Cfun, _ = Symbolics.build_function(sys.C, args...; kwargs...)
