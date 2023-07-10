@@ -126,41 +126,41 @@ damper_{+}tau\left( t \right) = damper_{+}d damper_{+}w_{rel}\left( t \right) \\
 \end{equation}
  \]</p><h3 id="Numeric-linearization"><a class="docs-heading-anchor" href="#Numeric-linearization">Numeric linearization</a><a id="Numeric-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Numeric-linearization" title="Permalink"></a></h3><p>We can linearize this model numerically using <code>named_ss</code>, this produces a <code>NamedStateSpace{Continuous, Float64}</code></p><pre><code class="language-julia hljs">lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">model: NamedStateSpace{Continuous, Float64}
 A = 
-     0.0    1.0      0.0    0.0
- -1000.0  -10.0   1000.0   10.0
-     0.0    0.0      0.0    1.0
-  1000.0   10.0  -1000.0  -10.0
+     0.0      0.0    1.0    0.0
+     0.0      0.0    0.0    1.0
+ -1000.0   1000.0  -10.0   10.0
+  1000.0  -1000.0   10.0  -10.0
 B = 
- 0.0
- 1.0
- 0.0
- 0.0
+  0.0
+  0.0
+  1.0
+ -0.0
 C = 
  1.0  0.0  0.0  0.0
- 0.0  0.0  1.0  0.0
+ 0.0  1.0  0.0  0.0
 D = 
  0.0
  0.0
 
 Continuous-time state-space model
-With state  names: inertia1₊phi(t) inertia1₊w(t) inertia2₊phi(t) inertia2₊w(t)
+With state  names: inertia1₊phi(t) inertia2₊phi(t) inertia1₊w(t) inertia2₊w(t)
      input  names: torque₊tau₊u(t)
      output names: inertia1₊phi(t) inertia2₊phi(t)
 </code></pre><h3 id="Symbolic-linearization"><a class="docs-heading-anchor" href="#Symbolic-linearization">Symbolic linearization</a><a id="Symbolic-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Symbolic-linearization" title="Permalink"></a></h3><p>If we instead call <code>linearize_symbolic</code> and pass the jacobians into <code>ss</code>, we get a <code>StateSpace{Continuous, Num}</code></p><pre><code class="language-julia hljs">mats, simplified_sys = ModelingToolkit.linearize_symbolic(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
 symbolic_sys = ss(mats.A, mats.B, mats.C, mats.D)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">StateSpace{Continuous, Num}
 A = 
-                0               1                                   0               0
- (-spring₊c) / inertia1₊J  (-damper₊d) / inertia1₊J     spring₊c / inertia1₊J    damper₊d / inertia1₊J
-                0               0                                   0               1
-    spring₊c / inertia2₊J    damper₊d / inertia2₊J   (-spring₊c) / inertia2₊J  (-damper₊d) / inertia2₊J
+                0                         0               1                         0
+                0                         0               0                         1
+ (-spring₊c) / inertia1₊J     spring₊c / inertia1₊J  (-damper₊d) / inertia1₊J    damper₊d / inertia1₊J
+    spring₊c / inertia2₊J  (-spring₊c) / inertia2₊J    damper₊d / inertia2₊J   (-damper₊d) / inertia2₊J
 B = 
+      0
       0
  1 / inertia1₊J
       0
-      0
 C = 
  1  0  0  0
- 0  0  1  0
+ 0  1  0  0
 D = 
  0
  0
@@ -172,18 +172,18 @@ fun = Symbolics.build_function(symbolic_sys, ModelingToolkit.parameters(simplifi
 
 static_lsys = fun(pars)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">StaticStateSpace{Continuous, 2, 1, 4, StaticArraysCore.SMatrix{4, 4, Float64, 16}, StaticArraysCore.SMatrix{4, 1, Float64, 4}, StaticArraysCore.SMatrix{2, 4, Int64, 8}, StaticArraysCore.SMatrix{2, 1, Int64, 2}}
 A = 
-     0.0    1.0      0.0    0.0
- -1000.0  -10.0   1000.0   10.0
-     0.0    0.0      0.0    1.0
-  1000.0   10.0  -1000.0  -10.0
+     0.0      0.0    1.0    0.0
+     0.0      0.0    0.0    1.0
+ -1000.0   1000.0  -10.0   10.0
+  1000.0  -1000.0   10.0  -10.0
 B = 
+ 0.0
  0.0
  1.0
  0.0
- 0.0
 C = 
  1  0  0  0
- 0  0  1  0
+ 0  1  0  0
 D = 
  0
  0
@@ -271,4 +271,4 @@ s \begin{bmatrix}I &amp; -\bar B \\ 0 &amp; 0 \end{bmatrix} &amp;=
 \begin{bmatrix}X \\ X_u \end{bmatrix} + 
 \begin{bmatrix} B \\ I_u\end{bmatrix} U \\
 sE &amp;= A_e x_e + B_e u
-\end{aligned}\]</p><p>where <span>$X_u$</span> is a new algebraic state variable and <span>$I_u$</span> is a selector matrix that picks out the differentiated inputs appearing in <span>$\dot u$</span> (if all inputs appear, <span>$I_u = I$</span>).</p><p>This model may be converted to a proper statespace model (if the system is indeed proper) using <code>DescriptorSystems.dss2ss</code>. All of this is handled automatically by <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a>.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="batch_linearization/">Batch linearization and gain scheduling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Thursday 4 May 2023 06:31">Thursday 4 May 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+\end{aligned}\]</p><p>where <span>$X_u$</span> is a new algebraic state variable and <span>$I_u$</span> is a selector matrix that picks out the differentiated inputs appearing in <span>$\dot u$</span> (if all inputs appear, <span>$I_u = I$</span>).</p><p>This model may be converted to a proper statespace model (if the system is indeed proper) using <code>DescriptorSystems.dss2ss</code>. All of this is handled automatically by <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a>.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="batch_linearization/">Batch linearization and gain scheduling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Monday 10 July 2023 05:06">Monday 10 July 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
