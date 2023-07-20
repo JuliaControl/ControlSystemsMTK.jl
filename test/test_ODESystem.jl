@@ -193,7 +193,7 @@ c = 10   # Damping coefficient
 @named spring = Spring(; c = k)
 @named damper = Damper(; d = c)
 
-@named torque = Torque()
+@named torque = Torque(use_support = false)
 
 function SystemModel(u=nothing; name=:model)
     @named sens = Rotational.AngleSensor()
