@@ -28,8 +28,6 @@ function ModelingToolkit.ODESystem(
     ControlSystemsBase.isdiscrete(sys) && error(
         "Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time",
     )
-    A, B, C, D = ssdata(sys)
-    nx, ny, nu = sys.nx, sys.ny, sys.nu
     x = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in x]
     u = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in u]
     y = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in y]
@@ -40,7 +38,7 @@ function ModelingToolkit.ODESystem(
         ModelingToolkit.setmetadata(y, ModelingToolkit.VariableOutput, true)
     end
 
-    osys = Blocks.StateSpace(ssdata(sys)...; x_start = x0, name)
+    Blocks.StateSpace(ssdata(sys)...; x = x0, name)
 end
 
 
@@ -531,7 +529,7 @@ end
 maybe_interp(interpolator, x, t) = allequal(x) ? x[1] : interpolator(x, t)
 
 """
-    GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros((systems[1]).nx), name, u0 = zeros((systems[1]).nu), y0 = zeros((systems[1]).ny))
+    GainScheduledStateSpace(systems, vt; interpolator, x = zeros((systems[1]).nx), name, u0 = zeros((systems[1]).nu), y0 = zeros((systems[1]).ny))
 
 A linear parameter-varying (LPV) version of [`Blocks.StateSpace`](@ref), implementing the following equations:
 
@@ -549,7 +547,7 @@ where `v` is a scalar scheduling variable.
 - `vt`: A vector of breakpoint values for the scheduling variable `v`, this has the same length as `systems`.
 - `interpolator`: A constructor `i = interpolator(values, breakpoints)` and returns an interpolator object that can be called like `i(v)` to get the interpolated value at `v`. `LinearInterpolation` from DataInterpolations.jl is a good choice, but a lookup table can also be used.
 """
-function GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros(systems[1].nx), name, u0 = zeros(systems[1].nu), y0 = zeros(systems[1].ny))
+function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1].nx), name, u0 = zeros(systems[1].nu), y0 = zeros(systems[1].ny))
 
     s1 = first(systems)
     (; nx, nu, ny) = s1
@@ -562,7 +560,7 @@ function GainScheduledStateSpace(systems, vt; interpolator, x_start = zeros(syst
     @named input = Blocks.RealInput(nin = nu)
     @named scheduling_input = Blocks.RealInput()
     @named output = Blocks.RealOutput(nout = ny)
-    @variables x(t)[1:nx]=x_start [
+    @variables x(t)[1:nx]=x [
         description = "State variables of gain-scheduled statespace system $name",
     ]
     @variables v(t) = 0 [
@@ -666,6 +664,15 @@ We can however use the PartitionedStateSpace to prove stability of the closed-ll
 # end
 
 
+"""
+    Symbolics.build_function(sys::AbstractStateSpace, args; kwargs)
+
+Build a function that takes parameters and returns a [`StateSpace`](@ref) object (technically a `HeteroStateSpace`).
+
+# Arguments:
+- `sys`: A statespace system with (typically) symbolic coefficients.
+- `args` and `kwargs`: are passed to the internal call to `build_function` from the Symbolics.jl package.
+"""
 function Symbolics.build_function(sys::AbstractStateSpace, args...; kwargs...)
     ControlSystemsBase.numeric_type(sys) <: Num || error("Expected a system with symbolic coefficients. Call linearize_symbolic to obtain symbolic jacobians")
     Afun, _ = Symbolics.build_function(sys.A, args...; kwargs...)
