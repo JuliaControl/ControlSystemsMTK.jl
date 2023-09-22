@@ -15,10 +15,10 @@ linearize
 linearization_function
 loopshapingPID
 named_ss
+ModelingToolkit.linearize_symbolic
 ModelingToolkitStandardLibrary.Blocks.get_looptransfer
 ModelingToolkitStandardLibrary.Blocks.StateSpace
 RobustAndOptimalControl.ss2particles
-bodeplot
 ControlSystemsBase.StateSpace
 SymbolicControlSystems.ccode
 SymbolicControlSystems.print_c_array
