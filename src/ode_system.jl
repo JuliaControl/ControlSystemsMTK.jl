@@ -156,12 +156,12 @@ end
 """
     RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)
 
-Convert an `ODESystem` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`, reproduced below.
+Convert an `ODESystem` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`.
 
 This method automatically converts systems that MTK has failed to produce a proper form for into a proper linear statespace system. Learn more about how that is done here:
 https://juliacontrol.github.io/ControlSystemsMTK.jl/dev/#Internals:-Transformation-of-non-proper-models-to-proper-statespace-form
 
-$(@doc(ModelingToolkit.linearize))
+See also [`ModelingToolkit.linearize`](@ref) which is the lower-level function called internally. The functions [`get_named_sensitivity`](@ref), [`get_named_comp_sensitivity`](@ref), [`get_named_looptransfer`](@ref) similarily provide convenient ways to compute sensitivity functions while retaining signal names in the same way as `named_ss`. The corresponding lower-level functions `get_sensitivity`, `get_comp_sensitivity` and `get_looptransfer` are available in ModelingToolkitStandardLibrary.Blocks and are documented in [MTKstdlib: Linear analysis](https://docs.sciml.ai/ModelingToolkitStandardLibrary/stable/API/linear_analysis/).
 """
 function RobustAndOptimalControl.named_ss(
     sys::ModelingToolkit.AbstractTimeDependentSystem,
@@ -234,6 +234,97 @@ function RobustAndOptimalControl.named_ss(
         x = symstr.(states(ssys)),
         u = unames,
         y = symstr.(outputs),
+        name = string(Base.nameof(sys)),
+    )
+end
+
+for f in [:sensitivity, :comp_sensitivity, :looptransfer]
+    fnn = Symbol("get_named_$f")
+    fn = Symbol("get_$f")
+    @eval function $(fnn)(args...; kwargs...)
+        named_sensitivity_function(Blocks.$(fn), args...; kwargs...)
+    end
+end
+
+
+"""
+    get_named_sensitivity(sys, ap::AnalysisPoint; kwargs...)
+    get_named_sensitivity(sys, ap_name::Symbol; kwargs...)
+
+Call [`ModelingToolkitStandardLibrary.Blocks.get_sensitivity`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
+"""
+get_named_sensitivity
+
+"""
+    get_named_comp_sensitivity(sys, ap::AnalysisPoint; kwargs...)
+    get_named_comp_sensitivity(sys, ap_name::Symbol; kwargs...)
+
+Call [`ModelingToolkitStandardLibrary.Blocks.get_comp_sensitivity`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
+"""
+get_named_comp_sensitivity
+
+"""
+    get_named_looptransfer(sys, ap::AnalysisPoint; kwargs...)
+    get_named_looptransfer(sys, ap_name::Symbol; kwargs...)
+
+Call [`ModelingToolkitStandardLibrary.Blocks.get_looptransfer`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
+"""
+get_named_looptransfer
+
+function named_sensitivity_function(
+    fun,
+    sys::ModelingToolkit.AbstractTimeDependentSystem,
+    inputs, args...;
+    kwargs...,
+)
+
+    if isa(inputs,  Symbol)
+        nu = 1
+    else
+        inputs = map(inputs) do inp
+            if inp isa ODESystem
+                @variables u(t)
+                if u ∈ Set(states(inp))
+                    inp.u
+                else
+                    error("Input $(inp.name) is an ODESystem and not a variable")
+                end
+            else
+                inp
+            end
+        end
+        nu = length(inputs)
+    end
+    matrices, ssys = fun(sys, inputs, args...; kwargs...)
+    symstr(x) = Symbol(string(x))
+    unames = symstr.(inputs)
+    fm(x) = convert(Matrix{Float64}, x)
+    if nu > 0 && size(matrices.B, 2) == 2nu
+        nx = size(matrices.A, 1)
+         # This indicates that input derivatives are present
+        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end])))
+        B̄ = matrices.B[:, duinds .+ nu]
+        ndu = length(duinds)
+        B = matrices.B[:, 1:nu]
+        Iu = duinds .== (1:nu)'
+        E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
+
+        Ae = cat(matrices.A, -I(ndu), dims=(1,2))
+        Be = [B; Iu]
+        Ce = [fm(matrices.C) zeros(ny, ndu)]
+        De = fm(matrices.D[:, 1:nu])
+        dsys = dss(Ae, E, Be, Ce, De)
+        lsys = ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
+        # unames = [unames; Symbol.("der_" .* string.(unames))]
+        # sys = ss(matrices...)
+    else
+        lsys = ss(matrices...)
+    end
+    named_ss(
+        lsys;
+        x = symstr.(states(ssys)),
+        u = unames,
+        y = unames, #Symbol.("out_" .* string.(inputs)),
         name = string(Base.nameof(sys)),
     )
 end
