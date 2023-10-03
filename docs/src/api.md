@@ -15,7 +15,12 @@ linearize
 linearization_function
 loopshapingPID
 named_ss
+get_named_sensitivity
+get_named_comp_sensitivity
+get_named_looptransfer
 ModelingToolkit.linearize_symbolic
+ModelingToolkitStandardLibrary.Blocks.get_sensitivity
+ModelingToolkitStandardLibrary.Blocks.get_comp_sensitivity
 ModelingToolkitStandardLibrary.Blocks.get_looptransfer
 ModelingToolkitStandardLibrary.Blocks.StateSpace
 RobustAndOptimalControl.ss2particles
