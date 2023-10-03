@@ -33,6 +33,8 @@ export sconnect, feedback, ODESystem, states, observed, named_ss
 export batch_ss, trajectory_ss, GainScheduledStateSpace
 export build_quadratic_cost_matrix
 
+export get_named_sensitivity, get_named_complementary_sensitivity, get_named_looptransfer
+
 include("ode_system.jl")
 # include("symbolic_optimization.jl")
 

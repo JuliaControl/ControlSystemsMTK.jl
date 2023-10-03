@@ -238,3 +238,33 @@ fun(p)
 static_lsys = fun(p)
 
 @test static_lsys == lsys.sys
+
+
+## Named sensitivity funcitons
+
+@named P = Blocks.FirstOrder(k = 1, T = 1)
+@named C = Blocks.Gain(; k = 1)
+@named add = Blocks.Add(k2 = -1)
+t = ModelingToolkit.get_iv(P)
+
+eqs = [connect(P.output, :plant_output, add.input2)
+    connect(add.output, C.input)
+    connect(C.output, :plant_input, P.input)]
+
+sys_inner = ODESystem(eqs, t, systems = [P, C, add], name = :inner)
+
+@named r = Blocks.Constant(k = 1)
+@named F = Blocks.FirstOrder(k = 1, T = 3)
+
+eqs = [connect(r.output, F.input)
+    connect(F.output, sys_inner.add.input1)]
+sys_outer = ODESystem(eqs, t, systems = [F, sys_inner, r], name = :outer)
+
+matrices, _ = Blocks.get_sensitivity(sys_outer, [:inner_plant_input, :inner_plant_output])
+S = ss(matrices...)
+
+Sn = get_named_sensitivity(sys_outer, [:inner_plant_input, :inner_plant_output])
+
+@test S == Sn.sys
+
+@test Sn.u == Sn.y == [:inner_plant_input, :inner_plant_output]
