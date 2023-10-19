@@ -172,20 +172,24 @@ symbolic_sys = ss(mats.A, mats.B, mats.C, mats.D)
 ```
 
 ### Code generation
-That's pretty cool, but even nicer is to generate some code for this symbolic system. Below, we use `build_function` to generate a function that takes a vector of parameters and returns a `StaticStateSpace{Continuous, Float64}`. We pass the keyword argument `force_SA=true` to `build_function` to get an allocation-free function. 
+That's pretty cool, but even nicer is to generate some code for this symbolic system. Below, we use `build_function` to generate a function that takes a numeric vector `x` representing the values of the state, and a vector of parameters, and returns a `StaticStateSpace{Continuous, Float64}`. We pass the keyword argument `force_SA=true` to `build_function` to get an allocation-free function. 
 
 ```@example LINEAIZE_SYMBOLIC
 defs = ModelingToolkit.defaults(simplified_sys)
-_, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs)
+x, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs) # Extract the default state and parameter values
 
-fun = Symbolics.build_function(symbolic_sys, ModelingToolkit.parameters(simplified_sys); expression=Val{false}, force_SA=true)
+fun = Symbolics.build_function(symbolic_sys, states(simplified_sys), ModelingToolkit.parameters(simplified_sys);
+    expression = Val{false}, # Generate a compiled function rather than a Julia expression
+    force_SA   = true,       # Use static arrays instead of regular arrays, for higher performance 🚀
+)
 
-static_lsys = fun(pars)
+static_lsys = fun(x, pars) # We now have a function that takes state and parameters and returns the linearized system!
 ```
 It's pretty fast
 ```julia
-@btime $fun($pars)
-9.548 ns (0 allocations: 0 bytes)
+using BenchmarkTools
+@btime $fun($x, $pars)
+8.484 ns (0 allocations: 0 bytes)
 ```
 faster than multiplying two integers in python.
 
