@@ -176,16 +176,17 @@ That's pretty cool, but even nicer is to generate some code for this symbolic sy
 
 ```@example LINEAIZE_SYMBOLIC
 defs = ModelingToolkit.defaults(simplified_sys)
-_, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs)
+x, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs)
 
-fun = Symbolics.build_function(symbolic_sys, ModelingToolkit.parameters(simplified_sys); expression=Val{false}, force_SA=true)
+fun = Symbolics.build_function(symbolic_sys, states(simplified_sys), ModelingToolkit.parameters(simplified_sys); expression=Val{false}, force_SA=true)
 
-static_lsys = fun(pars)
+static_lsys = fun(x, pars)
 ```
 It's pretty fast
 ```julia
-@btime $fun($pars)
-9.548 ns (0 allocations: 0 bytes)
+using BenchmarkTools
+@btime $fun($x, $pars)
+8.484 ns (0 allocations: 0 bytes)
 ```
 faster than multiplying two integers in python.
 
