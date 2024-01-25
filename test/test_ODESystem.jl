@@ -19,8 +19,8 @@ C0 = pid(1, 1) * tf(1, [0.01, 1]) |> ss
 fb              = feedback(loopgain, name = :fb) * ref
 fb              = structural_simplify(fb)
 
-@test length(states(P)) == 3 # 1 + u + y
-@test length(states(C)) == 4 # 2 + u + y
+@test length(unknowns(P)) == 3 # 1 + u + y
+@test length(unknowns(C)) == 4 # 2 + u + y
 
 x0 = Pair[loopgain.P.x[1]=>1]
 
@@ -60,7 +60,7 @@ P1 = ss(Pc, [Pc.input.u], [Pc.output.u])
 
 
 # === Go the other way, ODESystem -> StateSpace ================================
-x = states(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
+x = unknowns(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
 @unpack input, output = P
 P02_named = named_ss(P, [input.u], [output.u])
 @test P02_named.x == [Symbol("(x(t))[1]")]
@@ -71,14 +71,14 @@ P02 = ss(P02_named)
 @test P02 == P0 # verify that we get back what we started with
 
 # same for controller
-x = states(C)
+x = unknowns(C)
 @nonamespace C02 = named_ss(C, [C.input], [C.output])
 @test ss(C02) == C0
 
 
 ## Back again for a complete round trip, test that ODESystem get correct names
 @named P2 = ODESystem(P02_named)
-@test Set(states(P2)) == Set(states(P))
+@test Set(unknowns(P2)) == Set(unknowns(P))
 @test Set(ModelingToolkit.inputs(P2)) == Set(ModelingToolkit.inputs(P))
 @test Set(ModelingToolkit.outputs(P2)) == Set(ModelingToolkit.outputs(P))
 
@@ -165,7 +165,7 @@ prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), p, jac = true)
 sol = solve(prob, OrdinaryDiffEq.Rodas5(), saveat = 0:0.01:20)
 if isinteractive()
     @show sol.retcode
-    plot(sol, layout = length(states(simplified_sys)) + 1)
+    plot(sol, layout = length(unknowns(simplified_sys)) + 1)
     plot!(sol.t, sol[P.x[1]] - sol[P.x[3]], sp = 12, lab = "Δq")
 
     ##

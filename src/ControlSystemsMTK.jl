@@ -21,7 +21,7 @@ using ControlSystemsBase: ssdata, AbstractStateSpace, Continuous, nstates, noutp
 # using ControlSystemIdentification
 using RobustAndOptimalControl, MonteCarloMeasurements
 import ModelingToolkit: ODESystem, FnType, Symbolics
-using ModelingToolkit: states, observed, isdifferential
+using ModelingToolkit: unknowns, observed, isdifferential
 using Symbolics
 using Symbolics: jacobian, solve_for
 using UnPack
@@ -29,7 +29,7 @@ using UnPack
 
 # using SymbolicControlSystems
 
-export sconnect, feedback, ODESystem, states, observed, named_ss
+export sconnect, feedback, ODESystem, unknowns, observed, named_ss
 export batch_ss, trajectory_ss, GainScheduledStateSpace
 export build_quadratic_cost_matrix
 

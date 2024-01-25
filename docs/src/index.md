@@ -178,7 +178,7 @@ That's pretty cool, but even nicer is to generate some code for this symbolic sy
 defs = ModelingToolkit.defaults(simplified_sys)
 x, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs) # Extract the default state and parameter values
 
-fun = Symbolics.build_function(symbolic_sys, states(simplified_sys), ModelingToolkit.parameters(simplified_sys);
+fun = Symbolics.build_function(symbolic_sys, unknowns(simplified_sys), ModelingToolkit.parameters(simplified_sys);
     expression = Val{false}, # Generate a compiled function rather than a Julia expression
     force_SA   = true,       # Use static arrays instead of regular arrays, for higher performance 🚀
 )

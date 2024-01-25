@@ -176,7 +176,7 @@ function RobustAndOptimalControl.named_ss(
         inputs = map(inputs) do inp
             if inp isa ODESystem
                 @variables u(t)
-                if u ∈ Set(states(inp))
+                if u ∈ Set(unknowns(inp))
                     inp.u
                 else
                     error("Input $(inp.name) is an ODESystem and not a variable")
@@ -193,7 +193,7 @@ function RobustAndOptimalControl.named_ss(
         outputs = map(outputs) do out
             if out isa ODESystem
                 @variables u(t)
-                if u ∈ Set(states(out))
+                if u ∈ Set(unknowns(out))
                     out.u
                 else
                     error("Outut $(out.name) is an ODESystem and not a variable")
@@ -231,7 +231,7 @@ function RobustAndOptimalControl.named_ss(
     end
     named_ss(
         lsys;
-        x = symstr.(states(ssys)),
+        x = symstr.(unknowns(ssys)),
         u = unames,
         y = symstr.(outputs),
         name = string(Base.nameof(sys)),
@@ -284,7 +284,7 @@ function named_sensitivity_function(
         inputs = map(inputs) do inp
             if inp isa ODESystem
                 @variables u(t)
-                if u ∈ Set(states(inp))
+                if u ∈ Set(unknowns(inp))
                     inp.u
                 else
                     error("Input $(inp.name) is an ODESystem and not a variable")
@@ -322,7 +322,7 @@ function named_sensitivity_function(
     end
     named_ss(
         lsys;
-        x = symstr.(states(ssys)),
+        x = symstr.(unknowns(ssys)),
         u = unames,
         y = unames, #Symbol.("out_" .* string.(inputs)),
         name = string(Base.nameof(sys)),
@@ -353,7 +353,7 @@ The second problem above, the ordering of the states, can be worked around using
 - `costs`: A vector of pairs
 """
 function build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::AbstractVector{<:Pair})
-    x = ModelingToolkit.states(ssys)
+    x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
     nx = length(x)
     new_Cs = map(costs) do (xi, ci)
@@ -388,7 +388,7 @@ The second problem above, the ordering of the states, can be worked around using
 """
 function build_quadratic_cost_matrix(sys::ODESystem, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, first.(costs); kwargs...)
-    x = ModelingToolkit.states(ssys)
+    x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
     nx = length(x)
     new_Cs = map(costs) do (xi, ci)
@@ -446,7 +446,7 @@ eqs = [D(x) ~ v
 
 @named duffing = ODESystem(eqs, t)
 
-bounds = getbounds(duffing, states(duffing))
+bounds = getbounds(duffing, unknowns(duffing))
 sample_within_bounds((l, u)) = (u - l) * rand() + l
 # Create a vector of operating points
 ops = map(1:N) do i
@@ -513,7 +513,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
-    x = states(ssys)
+    x = unknowns(ssys)
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
         Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
