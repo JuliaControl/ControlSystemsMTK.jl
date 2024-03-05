@@ -18,7 +18,7 @@ eqs = [D(x) ~ v
 
 @named duffing = ODESystem(eqs, t, systems=[y, u])
 
-bounds = getbounds(duffing, states(duffing))
+bounds = getbounds(duffing, unknowns(duffing))
 sample_within_bounds((l, u)) = (u - l) * rand() + l
 # Create a vector of operating points
 N = 10
