@@ -680,7 +680,7 @@ function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1]
         [Differential(t)(x[i]) ~ sum(A[i, k] * x[k] for k in 1:nx) +
                                  sum(B[i, j] * (input.u[j] - u0[j]) for j in 1:nu)
          for i in 1:nx];
-        output.u .~ C * x .+ D * (input.u .- u0) .+ y0
+        collect(output.u .~ C * x .+ D * (input.u .- u0) .+ y0)
     ]
     compose(ODESystem(eqs, t, name = name), [input, output, scheduling_input])
 end
