@@ -409,7 +409,7 @@ end
 function batch_linearize(sys, inputs, outputs, ops::AbstractVector{<:AbstractDict}; t = 0.0,
         allow_input_derivatives = false,
         kwargs...)
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...)
     lins = map(ops) do op
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
     end
