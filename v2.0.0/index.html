@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · ControlSystemsMTK Documentation</title><meta name="title" content="Home · ControlSystemsMTK Documentation"/><meta property="og:title" content="Home · ControlSystemsMTK Documentation"/><meta property="twitter:title" content="Home · ControlSystemsMTK Documentation"/><meta name="description" content="Documentation for ControlSystemsMTK Documentation."/><meta property="og:description" content="Documentation for ControlSystemsMTK Documentation."/><meta property="twitter:description" content="Documentation for ControlSystemsMTK Documentation."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>ControlSystemsMTK Documentation</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#From-ControlSystems-to-ModelingToolkit"><span>From ControlSystems to ModelingToolkit</span></a></li><li><a class="tocitem" href="#From-ModelingToolkit-to-ControlSystems"><span>From ModelingToolkit to ControlSystems</span></a></li><li><a class="tocitem" href="#Symbolic-linearization-and-code-generation"><span>Symbolic linearization and code generation</span></a></li><li><a class="tocitem" href="#Additional-resources"><span>Additional resources</span></a></li><li><a class="tocitem" href="#Internals:-Transformation-of-non-proper-models-to-proper-statespace-form"><span>Internals: Transformation of non-proper models to proper statespace form</span></a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="batch_linearization/">Batch linearization and gain scheduling</a></li></ul></li><li><a class="tocitem" href="api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaControl/ControlSystemsMTK.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaControl/ControlSystemsMTK.jl/blob/master/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="ControlSystemsMTK.jl"><a class="docs-heading-anchor" href="#ControlSystemsMTK.jl">ControlSystemsMTK.jl</a><a id="ControlSystemsMTK.jl-1"></a><a class="docs-heading-anchor-permalink" href="#ControlSystemsMTK.jl" title="Permalink"></a></h1><p>ControlSystemsMTK provides an interface between <a href="https://github.com/JuliaControl/ControlSystems.jl">ControlSystems.jl</a> and <a href="https://github.com/SciML/ModelingToolkit.jl">ModelingToolkit.jl</a>.</p><p>See the videos below for examples of using ControlSystems and ModelingToolkit together.</p><iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/favQKOyyx4o" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/Effifd9Th9I" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><pre><code class="nohighlight hljs">pkg&gt; add ControlSystemsMTK</code></pre><h2 id="From-ControlSystems-to-ModelingToolkit"><a class="docs-heading-anchor" href="#From-ControlSystems-to-ModelingToolkit">From ControlSystems to ModelingToolkit</a><a id="From-ControlSystems-to-ModelingToolkit-1"></a><a class="docs-heading-anchor-permalink" href="#From-ControlSystems-to-ModelingToolkit" title="Permalink"></a></h2><p>Simply calling <code>ODESystem(sys)</code> converts a <code>StateSpace</code> object from ControlSystems into the corresponding <a href="http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace"><code>ModelingToolkitStandardLibrary.Blocks.StateSpace</code></a>. If <code>sys</code> is a <a href="https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems">named statespace object</a>, the names will be retained in the <code>ODESystem</code>.</p><h3 id="Example:"><a class="docs-heading-anchor" href="#Example:">Example:</a><a id="Example:-1"></a><a class="docs-heading-anchor-permalink" href="#Example:" title="Permalink"></a></h3><pre><code class="language-julia hljs">julia&gt; using ControlSystemsMTK, ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl
+
+julia&gt; P0 = tf(1.0, [1, 1])  |&gt; ss
+StateSpace{Continuous, Float64}
+A = 
+ -1.0
+B = 
+ 1.0
+C = 
+ 1.0
+D = 
+ 0.0
+
+Continuous-time state-space model
+
+julia&gt; @named P = ODESystem(P0)
+Model P with 2 equations
+States (3):
+  x[1](t) [defaults to 0.0]
+  input₊u(t) [defaults to 0.0]
+  output₊u(t) [defaults to 0.0]
+Parameters (0):
+
+julia&gt; equations(P)
+2-element Vector{Equation}:
+ Differential(t)(x[1](t)) ~ input₊u(t) - x[1](t)
+ output₊u(t) ~ x[1](t)</code></pre><h2 id="From-ModelingToolkit-to-ControlSystems"><a class="docs-heading-anchor" href="#From-ModelingToolkit-to-ControlSystems">From ModelingToolkit to ControlSystems</a><a id="From-ModelingToolkit-to-ControlSystems-1"></a><a class="docs-heading-anchor-permalink" href="#From-ModelingToolkit-to-ControlSystems" title="Permalink"></a></h2><p>An <code>ODESystem</code> can be converted to a named statespace object from <a href="https://github.com/JuliaControl/RobustAndOptimalControl.jl">RobustAndOptimalControl.jl</a> by calling <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a></p><pre><code class="language-julia hljs">named_ss(ode_sys, inputs, outputs; op)</code></pre><p>this performs a linearization of <code>ode_sys</code> around the operating point <code>op</code> (defaults to the default values of all variables in <code>ode_sys</code>).</p><h3 id="Example:-2"><a class="docs-heading-anchor" href="#Example:-2">Example:</a><a class="docs-heading-anchor-permalink" href="#Example:-2" title="Permalink"></a></h3><p>Using <code>P</code> from above:</p><pre><code class="language-julia hljs">julia&gt; @unpack input, output = P;
+
+julia&gt; P02_named = named_ss(P, [input.u], [output.u])
+NamedStateSpace{Continuous, Float64}
+A = 
+ -1.0
+B = 
+ 1.0
+C = 
+ 1.0
+D = 
+ 0.0
+
+Continuous-time state-space model
+With state  names: x[1](t)
+     input  names: input₊u(t)
+     output names: output₊u(t)
+
+julia&gt; using Plots;
+
+julia&gt; bodeplot(P02_named)</code></pre><p><img src="https://user-images.githubusercontent.com/3797491/184320765-6303b2db-ad85-4514-8b9e-d3d822b5561c.png" alt="plot"/></p><pre><code class="language-julia hljs">julia&gt; ss(P02_named) # Convert to a statespace system without names
+StateSpace{Continuous, Float64}
+A = 
+ -1.0
+B = 
+ 1.0
+C = 
+ 1.0
+D = 
+ 0.0
+
+Continuous-time state-space model</code></pre><p>ModelingToolkit tends to give weird names to inputs and outputs etc., to access variables easily, <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a> <a href="https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems">implements prefix matching</a>, so that you can access the mapping from <code>input₊u(t)</code> to <code>output₊u(t)</code> by</p><pre><code class="language-julia hljs">P02_named[:out, :in]</code></pre><p>To learn more about linearization of ModelingToolkit models, see the video below</p><iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/-XOux-2XDGI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><h2 id="Symbolic-linearization-and-code-generation"><a class="docs-heading-anchor" href="#Symbolic-linearization-and-code-generation">Symbolic linearization and code generation</a><a id="Symbolic-linearization-and-code-generation-1"></a><a class="docs-heading-anchor-permalink" href="#Symbolic-linearization-and-code-generation" title="Permalink"></a></h2><p>ModelingToolkit has facilities for symbolic linearization that can be used on sufficiently simple systems. The function <code>linearize_symbolic</code> behaves similarly to <code>linearize</code> but returns symbolic matrices <code>A,B,C,D</code> rather than numeric. A <code>StateSpace</code> system with such symbolic coefficients can be used to generate a function that takes parameter values and outputs a statically sized statespace system with numeric matrices. An example follows</p><h3 id="System-model"><a class="docs-heading-anchor" href="#System-model">System model</a><a id="System-model-1"></a><a class="docs-heading-anchor-permalink" href="#System-model" title="Permalink"></a></h3><p>We start by building a system mode, we&#39;ll use a model of two masses connected by a flexible transmission</p><pre><code class="language-julia hljs">using ControlSystemsMTK, ControlSystemsBase
+using ModelingToolkit, OrdinaryDiffEq, LinearAlgebra
+using ModelingToolkitStandardLibrary.Mechanical.Rotational
+using ModelingToolkitStandardLibrary.Blocks: Sine
+using ModelingToolkit: connect
+import ModelingToolkitStandardLibrary.Blocks
+t = Blocks.t
+
+# Parameters
+m1 = 1
+m2 = 1
+k = 1000 # Spring stiffness
+c = 10   # Damping coefficient
+@named inertia1 = Inertia(; J = m1)
+@named inertia2 = Inertia(; J = m2)
+@named spring = Spring(; c = k)
+@named damper = Damper(; d = c)
+@named torque = Torque(use_support=false)
+
+function SystemModel(u=nothing; name=:model)
+    @named sens = Rotational.AngleSensor()
+    eqs = [
+        connect(torque.flange, inertia1.flange_a)
+        connect(inertia1.flange_b, spring.flange_a, damper.flange_a)
+        connect(inertia2.flange_a, spring.flange_b, damper.flange_b)
+        connect(inertia2.flange_b, sens.flange)
+    ]
+    if u !== nothing
+        push!(eqs, connect(u.output, :u, torque.tau))
+        return @named model = ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper, u])
+    end
+    ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper], name)
+end
+
+model = SystemModel() |&gt; complete</code></pre><p class="math-container">\[ \begin{equation}
+\left[
+\begin{array}{c}
+\mathrm{connect}\left( torque_{+}flange, inertia1_{+}flange_{a} \right) \\
+\mathrm{connect}\left( inertia1_{+}flange_{b}, spring_{+}flange_{a}, damper_{+}flange_{a} \right) \\
+\mathrm{connect}\left( inertia2_{+}flange_{a}, spring_{+}flange_{b}, damper_{+}flange_{b} \right) \\
+\mathrm{connect}\left( inertia2_{+}flange_{b}, sens_{+}flange \right) \\
+sens_{+}phi_{+}u\left( t \right) = sens_{+}flange_{+}phi\left( t \right) \\
+sens_{+}flange_{+}tau\left( t \right) = 0 \\
+torque_{+}phi_{support}\left( t \right) = 0 \\
+torque_{+}flange_{+}tau\left( t \right) =  - torque_{+}tau_{+}u\left( t \right) \\
+inertia1_{+}phi\left( t \right) = inertia1_{+}flange_{a_{+}phi}\left( t \right) \\
+inertia1_{+}phi\left( t \right) = inertia1_{+}flange_{b_{+}phi}\left( t \right) \\
+\frac{\mathrm{d} inertia1_{+}phi\left( t \right)}{\mathrm{d}t} = inertia1_{+}w\left( t \right) \\
+\frac{\mathrm{d} inertia1_{+}w\left( t \right)}{\mathrm{d}t} = inertia1_{+}a\left( t \right) \\
+inertia1_{+}J inertia1_{+}a\left( t \right) = inertia1_{+}flange_{a_{+}tau}\left( t \right) + inertia1_{+}flange_{b_{+}tau}\left( t \right) \\
+inertia2_{+}phi\left( t \right) = inertia2_{+}flange_{a_{+}phi}\left( t \right) \\
+inertia2_{+}phi\left( t \right) = inertia2_{+}flange_{b_{+}phi}\left( t \right) \\
+\frac{\mathrm{d} inertia2_{+}phi\left( t \right)}{\mathrm{d}t} = inertia2_{+}w\left( t \right) \\
+\frac{\mathrm{d} inertia2_{+}w\left( t \right)}{\mathrm{d}t} = inertia2_{+}a\left( t \right) \\
+inertia2_{+}J inertia2_{+}a\left( t \right) = inertia2_{+}flange_{b_{+}tau}\left( t \right) + inertia2_{+}flange_{a_{+}tau}\left( t \right) \\
+spring_{+}phi_{rel}\left( t \right) = spring_{+}flange_{b_{+}phi}\left( t \right) - spring_{+}flange_{a_{+}phi}\left( t \right) \\
+spring_{+}flange_{b_{+}tau}\left( t \right) = spring_{+}tau\left( t \right) \\
+spring_{+}flange_{a_{+}tau}\left( t \right) =  - spring_{+}tau\left( t \right) \\
+spring_{+}tau\left( t \right) = spring_{+}c \left(  - spring_{+}phi_{rel0} + spring_{+}phi_{rel}\left( t \right) \right) \\
+damper_{+}phi_{rel}\left( t \right) =  - damper_{+}flange_{a_{+}phi}\left( t \right) + damper_{+}flange_{b_{+}phi}\left( t \right) \\
+\frac{\mathrm{d} damper_{+}phi_{rel}\left( t \right)}{\mathrm{d}t} = damper_{+}w_{rel}\left( t \right) \\
+\frac{\mathrm{d} damper_{+}w_{rel}\left( t \right)}{\mathrm{d}t} = damper_{+}a_{rel}\left( t \right) \\
+damper_{+}flange_{b_{+}tau}\left( t \right) = damper_{+}tau\left( t \right) \\
+damper_{+}flange_{a_{+}tau}\left( t \right) =  - damper_{+}tau\left( t \right) \\
+damper_{+}tau\left( t \right) = damper_{+}d damper_{+}w_{rel}\left( t \right) \\
+\end{array}
+\right]
+\end{equation}
+ \]</p><h3 id="Numeric-linearization"><a class="docs-heading-anchor" href="#Numeric-linearization">Numeric linearization</a><a id="Numeric-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Numeric-linearization" title="Permalink"></a></h3><p>We can linearize this model numerically using <code>named_ss</code>, this produces a <code>NamedStateSpace{Continuous, Float64}</code></p><pre><code class="language-julia hljs">lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">model: NamedStateSpace{Continuous, Float64}
+A = 
+     0.0      0.0    1.0    0.0
+     0.0      0.0    0.0    1.0
+ -1000.0   1000.0  -10.0   10.0
+  1000.0  -1000.0   10.0  -10.0
+B = 
+  0.0
+  0.0
+  1.0
+ -0.0
+C = 
+ 1.0  0.0  0.0  0.0
+ 0.0  1.0  0.0  0.0
+D = 
+ 0.0
+ 0.0
+
+Continuous-time state-space model
+With state  names: inertia1₊phi(t) inertia2₊phi(t) inertia1₊w(t) inertia2₊w(t)
+     input  names: torque₊tau₊u(t)
+     output names: inertia1₊phi(t) inertia2₊phi(t)
+</code></pre><h3 id="Symbolic-linearization"><a class="docs-heading-anchor" href="#Symbolic-linearization">Symbolic linearization</a><a id="Symbolic-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Symbolic-linearization" title="Permalink"></a></h3><p>If we instead call <code>linearize_symbolic</code> and pass the jacobians into <code>ss</code>, we get a <code>StateSpace{Continuous, Num}</code></p><pre><code class="language-julia hljs">mats, simplified_sys = ModelingToolkit.linearize_symbolic(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
+symbolic_sys = ss(mats.A, mats.B, mats.C, mats.D)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">StateSpace{Continuous, Num}
+A = 
+                0                         0               1                         0
+                0                         0               0                         1
+ (-spring₊c) / inertia1₊J     spring₊c / inertia1₊J  (-damper₊d) / inertia1₊J    damper₊d / inertia1₊J
+    spring₊c / inertia2₊J  (-spring₊c) / inertia2₊J    damper₊d / inertia2₊J   (-damper₊d) / inertia2₊J
+B = 
+      0
+      0
+ 1 / inertia1₊J
+      0
+C = 
+ 1  0  0  0
+ 0  1  0  0
+D = 
+ 0
+ 0
+
+Continuous-time state-space model</code></pre><h3 id="Code-generation"><a class="docs-heading-anchor" href="#Code-generation">Code generation</a><a id="Code-generation-1"></a><a class="docs-heading-anchor-permalink" href="#Code-generation" title="Permalink"></a></h3><p>That&#39;s pretty cool, but even nicer is to generate some code for this symbolic system. Below, we use <code>build_function</code> to generate a function that takes a numeric vector <code>x</code> representing the values of the state, and a vector of parameters, and returns a <code>StaticStateSpace{Continuous, Float64}</code>. We pass the keyword argument <code>force_SA=true</code> to <code>build_function</code> to get an allocation-free function. </p><pre><code class="language-julia hljs">defs = ModelingToolkit.defaults(simplified_sys)
+x, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs) # Extract the default state and parameter values
+
+fun = Symbolics.build_function(symbolic_sys, unknowns(simplified_sys), ModelingToolkit.parameters(simplified_sys);
+    expression = Val{false}, # Generate a compiled function rather than a Julia expression
+    force_SA   = true,       # Use static arrays instead of regular arrays, for higher performance 🚀
+)
+
+static_lsys = fun(x, pars) # We now have a function that takes state and parameters and returns the linearized system!</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">StaticStateSpace{Continuous, 2, 1, 4, StaticArraysCore.SMatrix{4, 4, Float64, 16}, StaticArraysCore.SMatrix{4, 1, Float64, 4}, StaticArraysCore.SMatrix{2, 4, Int64, 8}, StaticArraysCore.SMatrix{2, 1, Int64, 2}}
+A = 
+     0.0      0.0    1.0    0.0
+     0.0      0.0    0.0    1.0
+ -1000.0   1000.0  -10.0   10.0
+  1000.0  -1000.0   10.0  -10.0
+B = 
+ 0.0
+ 0.0
+ 1.0
+ 0.0
+C = 
+ 1  0  0  0
+ 0  1  0  0
+D = 
+ 0
+ 0
+
+Continuous-time state-space model</code></pre><p>It&#39;s pretty fast</p><pre><code class="language-julia hljs">using BenchmarkTools
+@btime $fun($x, $pars)
+8.484 ns (0 allocations: 0 bytes)</code></pre><p>faster than multiplying two integers in python.</p><h3 id="C-code-generation"><a class="docs-heading-anchor" href="#C-code-generation">C-code generation</a><a id="C-code-generation-1"></a><a class="docs-heading-anchor-permalink" href="#C-code-generation" title="Permalink"></a></h3><p>If you prefer to get C-code for deployment onto an embedded target, the types from Symbolics can be converted to SymPy symbols using <code>symbolics_to_sympy</code>. After this, the function <a href="https://github.com/JuliaControl/SymbolicControlSystems.jl#code-generation"><code>SymbolicControlSystems.ccode</code></a> is called to generate the C-code. The symbols that are present in the system will be considered input arguments in the generated code.</p><pre><code class="language-julia hljs">using SymbolicControlSystems
+Asp = SymbolicControlSystems.Sym.(Symbolics.symbolics_to_sympy.(mats.A))
+Bsp = SymbolicControlSystems.Sym.(Symbolics.symbolics_to_sympy.(mats.B))
+Csp = SymbolicControlSystems.Sym.(Symbolics.symbolics_to_sympy.(mats.C))
+Dsp = SymbolicControlSystems.Sym.(Symbolics.symbolics_to_sympy.(mats.D))
+sys_sp = ss(Asp, Bsp, Csp, Dsp)
+sympars_sp = Symbolics.symbolics_to_sympy.(sympars)
+
+discrete_sys_sp = c2d(sys_sp, 0.01, :tustin) # We can only generate C-code for discrete systems
+
+code = SymbolicControlSystems.ccode(discrete_sys_sp; function_name=&quot;perfectly_grilled_hotdogs&quot;)</code></pre><p>This produces the following code, </p><pre><code class="language-c hljs">#include &lt;stdio.h&gt;
+#include &lt;math.h&gt;
+
+void perfectly_grilled_hotdogs(double *y, double u, double damper_d, double inertia1_J, double inertia2_J, double spring_c) {
+    static double x[4] = {0};  // Current state
+    double xp[4] = {0};        // Next state
+    int i;
+
+    // Common sub expressions. These are all called xi, but are unrelated to the state x
+    double x0 = inertia2_J*spring_c;
+    double x1 = 2.0*x0;
+    double x2 = 200.0*damper_d;
+    double x3 = inertia2_J*x2;
+    double x4 = x0 + x3;
+    double x5 = 40000.0*inertia2_J;
+    double x6 = inertia1_J*x5;
+    double x7 = inertia1_J*spring_c;
+    double x8 = inertia1_J*x2;
+    double x9 = x7 + x8;
+    double x10 = x6 + x9;
+    double x11 = 1.0/(x10 + x4);
+    double x12 = x11*x[2];
+    double x13 = damper_d*inertia1_J;
+    double x14 = inertia1_J*inertia2_J;
+    double x15 = 1.0/(damper_d*x5 + 200.0*x0 + 40000.0*x13 + 8000000.0*x14 + 200.0*x7);
+    double x16 = spring_c + x2;
+    double x17 = 0.01*u;
+    double x18 = x17*(x16 + x5);
+    double x19 = 20000.0*damper_d;
+    double x20 = 1.0/(inertia1_J*x19 + inertia2_J*x19 + 100.0*x0 + 4000000.0*x14 + 100.0*x7);
+    double x21 = x20*x[3];
+    double x22 = x20*x[1];
+    double x23 = -x0;
+    double x24 = x10 + x3;
+    double x25 = x11*x[0];
+    double x26 = x0*x12;
+    double x27 = x11*x[3];
+    double x28 = x11*x[1];
+    double x29 = 2.0*x7;
+    double x30 = x16*x17;
+    double x31 = x4 + x6;
+    double x32 = -x7;
+    double x33 = x31 + x8;
+    double x34 = x25*x7;
+    double x35 = x15*x[3];
+    double x36 = x15*x[1];
+    double x37 = 0.005*u*x15/inertia1_J;
+
+    // Advance the state xp = Ax + Bu
+    xp[0] = (x1*x12 + x10*x22 + x15*x18 + x21*x4 + x25*(x23 + x24));
+    xp[1] = (-400.0*x0*x25 + x11*x18 + 400.0*x26 + x27*(400.0*damper_d*inertia2_J + x1) + x28*(x10 + x23 - x3));
+    xp[2] = (x12*(x32 + x33) + x15*x30 + x21*x31 + x22*x9 + x25*x29);
+    xp[3] = (x11*x30 - 400.0*x12*x7 + x27*(x31 + x32 - x8) + x28*(400.0*x13 + x29) + 400.0*x34);
+
+    // Accumulate the output y = C*x + D*u
+    y[0] = (x10*x36 + x10*x37 + x24*x25 + x26 + x35*x4);
+    y[1] = (x12*x33 + x31*x35 + x34 + x36*x9 + x37*x9);
+
+    // Make the predicted state the current state
+    for (i=0; i &lt; 4; ++i) {
+        x[i] = xp[i];
+    }
+
+}</code></pre><h2 id="Additional-resources"><a class="docs-heading-anchor" href="#Additional-resources">Additional resources</a><a id="Additional-resources-1"></a><a class="docs-heading-anchor-permalink" href="#Additional-resources" title="Permalink"></a></h2><ul><li><a href="https://help.juliahub.com/juliasimcontrol/dev/examples/mtk_control/">Modeling for control using ModelingToolkit</a> tutorial</li><li><a href="https://docs.sciml.ai/ModelingToolkitStandardLibrary/dev/API/linear_analysis/">Linear Analysis tools in ModelingToolkit</a></li><li><a href="https://youtu.be/Effifd9Th9I?t=1243">Video demo using ControlSystems and MTK</a></li></ul><h2 id="Internals:-Transformation-of-non-proper-models-to-proper-statespace-form"><a class="docs-heading-anchor" href="#Internals:-Transformation-of-non-proper-models-to-proper-statespace-form">Internals: Transformation of non-proper models to proper statespace form</a><a id="Internals:-Transformation-of-non-proper-models-to-proper-statespace-form-1"></a><a class="docs-heading-anchor-permalink" href="#Internals:-Transformation-of-non-proper-models-to-proper-statespace-form" title="Permalink"></a></h2><p>For some models, ModelingToolkit will fail to produce a proper statespace model (a non-proper model is differentiating the inputs, i.e., it has a numerator degree higher than the denominator degree if represented as a transfer function) when calling <a href="api/#ModelingToolkit.linearize"><code>linearize</code></a>. For such models, given on the form <span>$\dot x = Ax + Bu + \bar B \dot u$</span> we create the following augmented descriptor model</p><p class="math-container">\[\begin{aligned}
+sX &amp;= Ax + BU + s\bar B U \\
+[X_u &amp;= U]\\
+s(X - \bar B X_u) &amp;= AX + BU \\
+s \begin{bmatrix}I &amp; -\bar B \\ 0 &amp; 0 \end{bmatrix} &amp;= 
+\begin{bmatrix} A &amp; 0 \\ 0 &amp; -I\end{bmatrix}
+\begin{bmatrix}X \\ X_u \end{bmatrix} + 
+\begin{bmatrix} B \\ I_u\end{bmatrix} U \\
+sE &amp;= A_e x_e + B_e u
+\end{aligned}\]</p><p>where <span>$X_u$</span> is a new algebraic state variable and <span>$I_u$</span> is a selector matrix that picks out the differentiated inputs appearing in <span>$\dot u$</span> (if all inputs appear, <span>$I_u = I$</span>).</p><p>This model may be converted to a proper statespace model (if the system is indeed proper) using <code>DescriptorSystems.dss2ss</code>. All of this is handled automatically by <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a>.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="batch_linearization/">Batch linearization and gain scheduling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Tuesday 5 March 2024 09:40">Tuesday 5 March 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
