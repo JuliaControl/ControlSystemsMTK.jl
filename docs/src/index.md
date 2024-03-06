@@ -304,3 +304,8 @@ where $X_u$ is a new algebraic state variable and $I_u$ is a selector matrix tha
 
 This model may be converted to a proper statespace model (if the system is indeed proper) using `DescriptorSystems.dss2ss`.
 All of this is handled automatically by [`named_ss`](@ref).
+
+**Summary**: If you get the error message
+> Input derivatives appeared in expressions (-g_z\g_u != 0)
+
+Switch from calling `linearize` to calling `named_ss` with exactly the same input arguments, and then pass the argument `allow_input_derivatives = true` to `named_ss`.
