@@ -28,19 +28,17 @@ function ModelingToolkit.ODESystem(
     ControlSystemsBase.isdiscrete(sys) && error(
         "Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time",
     )
-    x = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in x]
-    u = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in u]
-    y = [Num(Symbolics.variable(name; T = FnType{Tuple{Any},Real}))(t) for name in y]
-    u = map(u) do u
-        ModelingToolkit.setmetadata(u, ModelingToolkit.VariableInput, true)
-    end
-    y = map(y) do y
-        ModelingToolkit.setmetadata(y, ModelingToolkit.VariableOutput, true)
-    end
-
-    Blocks.StateSpace(ssdata(sys)...; x = x0, name)
+    uc = [Blocks.RealInput(; name = Symbol(u)) for u in u]
+    yc = [Blocks.RealOutput(; name = Symbol(y)) for y in y]
+    @named ssblock = Blocks.StateSpace(ssdata(sys)...; x = x0)
+    @unpack input, output = ssblock
+    systems = [uc; yc; input; output]
+    eqs = [
+        [uc[i].u ~ input.u[i] for i in 1:length(uc)];
+        [yc[i].u ~ output.u[i] for i in 1:length(yc)];
+    ]
+    extend(ODESystem(eqs, t; name, systems), ssblock)
 end
-
 
 """
     sconnect(input::Function, sys::T; name)
@@ -355,6 +353,7 @@ The second problem above, the ordering of the states, can be worked around using
 function build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::AbstractVector{<:Pair})
     x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
+    # y = getproperty.(ModelingToolkit.observed(ssys), :lhs)
     nx = length(x)
     new_Cs = map(costs) do (xi, ci)
         i = findfirst(isequal(xi), x)
@@ -362,7 +361,7 @@ function build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, cost
             sqrt(ci) .* ((1:nx)' .== i)
         else # not a state, get output instead
             i = findfirst(isequal(xi), y)
-            i === nothing && error("$xi is neither a state nor an output")
+            i === nothing && error("$xi is neither a state variable nor an output of the system")
             sqrt(ci) .* matrices.C[i, :]
         end
     end
