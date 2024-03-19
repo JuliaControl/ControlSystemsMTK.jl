@@ -21,7 +21,7 @@ pkg> add ControlSystemsMTK
 
 
 ## From ControlSystems to ModelingToolkit
-Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSystems into the corresponding [`ModelingToolkitStandardLibrary.Blocks.StateSpace`](http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace). If `sys` is a [named statespace object](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), the names will be retained in the `ODESystem`.
+Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSystems into the corresponding [`ModelingToolkitStandardLibrary.Blocks.StateSpace`](http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace). If `sys` is a [named statespace object](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), the names of inputs and outputs will be retained in the `ODESystem` as connectors, that is, if `my_input` is an input variable in the named statespace object, `my_input` will be a connector of type `RealInput` in the resulting ODESystem. Names of state variables are currently ignored.
 
 ### Example:
 
@@ -54,6 +54,22 @@ julia> equations(P)
  Differential(t)(x[1](t)) ~ input₊u(t) - x[1](t)
  output₊u(t) ~ x[1](t)
 ```
+
+To connect `P` to the input and output of `P`, use the connectors `P.input` and `P.output`. If the inputs or outputs are multivariable, there are _additional_ scalar connectors for each input/output variable respectively. 
+
+### Example with named signals
+The following creates a named statespace system with named inputs `u = :torque` and outputs `y = [:motor_angle, :load_angle]`:
+```@example CONNECT
+using ControlSystemsMTK, ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl
+
+P = named_ss(DemoSystems.double_mass_model(outputs = [1,3]), u=:torque, y=[:motor_angle, :load_angle])
+```
+
+When we convert this system to an ODESystem, we get a system with connectors `P.torque` and `P.motor_angle`, in addition to the standard connectors `P.input` and `P.output`:
+```@example CONNECT
+@named P_ode = ODESystem(P)
+```
+Here, `P.torque` is equal to `P.input`, so you may choose to connect to either of them. However, since the output is multivariable, the connector `P.output` represents both outputs, while `P.motor_angle` and `P.load_angle` represent the individual scalar outputs.
 
 
 ## From ModelingToolkit to ControlSystems
