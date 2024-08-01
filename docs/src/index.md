@@ -151,8 +151,8 @@ m1 = 1
 m2 = 1
 k = 1000 # Spring stiffness
 c = 10   # Damping coefficient
-@named inertia1 = Inertia(; J = m1)
-@named inertia2 = Inertia(; J = m2)
+@named inertia1 = Inertia(; J = m1, w=0)
+@named inertia2 = Inertia(; J = m2, w=0)
 @named spring = Spring(; c = k)
 @named damper = Damper(; d = c)
 @named torque = Torque(use_support=false)
@@ -178,7 +178,7 @@ model = SystemModel() |> complete
 ### Numeric linearization
 We can linearize this model numerically using `named_ss`, this produces a `NamedStateSpace{Continuous, Float64}`
 ```@example LINEAIZE_SYMBOLIC
-lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
+lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi], op = Dict(model.torque.tau.u => 0))
 ```
 ### Symbolic linearization
 If we instead call `linearize_symbolic` and pass the jacobians into `ss`, we get a `StateSpace{Continuous, Num}`
@@ -192,6 +192,7 @@ That's pretty cool, but even nicer is to generate some code for this symbolic sy
 
 ```@example LINEAIZE_SYMBOLIC
 defs = ModelingToolkit.defaults(simplified_sys)
+defs = merge(Dict(unknowns(model) .=> 0), defs)
 x, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs) # Extract the default state and parameter values
 
 fun = Symbolics.build_function(symbolic_sys, unknowns(simplified_sys), ModelingToolkit.parameters(simplified_sys);
