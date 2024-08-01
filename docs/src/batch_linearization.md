@@ -119,7 +119,7 @@ for C in Cs
         connect(Ci.output, duffing.u)
     ]
     @named closed_loop = ODESystem(eqs, t, systems=[duffing, Ci, fb, ref, F])
-    prob = ODEProblem(structural_simplify(closed_loop), [], (0.0, 8.0))
+    prob = ODEProblem(structural_simplify(closed_loop), [F.xd => 0], (0.0, 8.0))
     sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
     plot!(sol, idxs=[duffing.y.u, duffing.u.u], layout=2, lab="")
 end
@@ -133,8 +133,8 @@ eqs = [
     connect(duffing.y, Cgs.scheduling_input) # Don't forget to connect the scheduling variable!
 ]
 @named closed_loop = ODESystem(eqs, t, systems=[duffing, Cgs, fb, ref, F])
-prob = ODEProblem(structural_simplify(closed_loop), [], (0.0, 8.0))
-sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
+prob = ODEProblem(structural_simplify(closed_loop), [F.xd => 0], (0.0, 8.0))
+sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8, initializealg=NoInit())
 plot!(sol, idxs=[duffing.y.u, duffing.u.u], l=(2, :red), lab="Gain scheduled")
 plot!(sol, idxs=F.output.u, l=(1, :black, :dash, 0.5), lab="Ref")
 ```
