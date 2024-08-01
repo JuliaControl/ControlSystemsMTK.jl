@@ -64,7 +64,7 @@ closed_loop_eqs = [
 @named closed_loop = ODESystem(closed_loop_eqs, t, systems=[duffing, C, fb, ref, F])
 
 ssys = structural_simplify(closed_loop)
-prob = ODEProblem(ssys, [], (0.0, 8.0))
+prob = ODEProblem(ssys, [F.xd => 0], (0.0, 8.0))
 sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
 # plot(sol)
 

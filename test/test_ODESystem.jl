@@ -2,6 +2,7 @@ using ControlSystemsMTK,
     ControlSystemsBase, ModelingToolkit, OrdinaryDiffEq, RobustAndOptimalControl
 import ModelingToolkitStandardLibrary.Blocks as Blocks
 conn = ModelingToolkit.connect
+connect = ModelingToolkit.connect
 ## Test SISO (single input, single output) system
 @parameters t
 
@@ -22,7 +23,9 @@ fb              = structural_simplify(fb0)
 # @test length(unknowns(P)) == 3 # 1 + u + y
 # @test length(unknowns(C)) == 4 # 2 + u + y
 
-x0 = Pair[loopgain.P.x=>1.0]
+x0 = Pair[
+    collect(loopgain.P.x) .=> 1.0;
+]
 
 prob = ODEProblem(fb, x0, (0.0, 10.0))
 sol = solve(prob, Rodas5())
@@ -187,8 +190,8 @@ m2 = 1
 k = 1000 # Spring stiffness
 c = 10   # Damping coefficient
 
-@named inertia1 = Inertia(; J = m1)
-@named inertia2 = Inertia(; J = m2)
+@named inertia1 = Inertia(; J = m1, w=0)
+@named inertia2 = Inertia(; J = m2, w=0)
 
 @named spring = Spring(; c = k)
 @named damper = Damper(; d = c)
@@ -229,8 +232,11 @@ sys = ss((mats...,)[1:4]...)
 
 
 defs = ModelingToolkit.defaults(ssys)
-sympars = ModelingToolkit.parameters(ssys)
+defs = merge(Dict(unknowns(model) .=> 0), defs)
 _, p = ModelingToolkit.get_u0_p(ssys, defs, defs)
+
+
+sympars = ModelingToolkit.parameters(ssys)
 
 fun = Symbolics.build_function(sys, sympars; expression=Val{false}, force_SA=true)
 fun(p)
