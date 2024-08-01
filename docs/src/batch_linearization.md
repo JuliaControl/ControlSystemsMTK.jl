@@ -26,7 +26,7 @@ eqs = [D(x) ~ v
        y.u ~ x]
 
 
-@named duffing = ODESystem(eqs, t, systems=[y, u])
+@named duffing = ODESystem(eqs, t, systems=[y, u], defaults=[u.u => 0])
 ```
 
 ## Batch linearization
