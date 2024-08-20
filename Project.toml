@@ -22,7 +22,7 @@ ModelingToolkitStandardLibrary = "2"
 MonteCarloMeasurements = "1.1"
 OrdinaryDiffEq = "6"
 RobustAndOptimalControl = "0.4.14"
-Symbolics = "5"
+Symbolics = "5, 6"
 UnPack = "1"
 julia = "1.6"
 
