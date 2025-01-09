@@ -220,7 +220,6 @@ Bsp = SymbolicControlSystems.Sym.(Symbolics.symbolics_to_sympy.(mats.B))
 Csp = SymbolicControlSystems.Sym.(Symbolics.symbolics_to_sympy.(mats.C))
 Dsp = SymbolicControlSystems.Sym.(Symbolics.symbolics_to_sympy.(mats.D))
 sys_sp = ss(Asp, Bsp, Csp, Dsp)
-sympars_sp = Symbolics.symbolics_to_sympy.(sympars)
 
 discrete_sys_sp = c2d(sys_sp, 0.01, :tustin) # We can only generate C-code for discrete systems
 
