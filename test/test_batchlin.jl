@@ -72,6 +72,6 @@ sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
 
 time = 0:0.1:8
 inputs, outputs = [duffing.u.u], [duffing.y.u]
-Ps2, ssys = trajectory_ss(closed_loop, :r, :y, sol; t=time)
+Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=time)
 @test length(Ps2) == length(time)
 # bodeplot(Ps2)

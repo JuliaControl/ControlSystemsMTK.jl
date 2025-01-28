@@ -266,14 +266,14 @@ eqs = [connect(r.output, F.input)
     connect(F.output, sys_inner.add.input1)]
 sys_outer = ODESystem(eqs, t, systems = [F, sys_inner, r], name = :outer)
 
-matrices, _ = Blocks.get_sensitivity(sys_outer, [:inner_plant_input, :inner_plant_output])
+matrices, _ = Blocks.get_sensitivity(sys_outer, [sys_outer.inner.plant_input, sys_outer.inner.plant_output])
 S = ss(matrices...)
 
-Sn = get_named_sensitivity(sys_outer, [:inner_plant_input, :inner_plant_output])
+Sn = get_named_sensitivity(sys_outer, [sys_outer.inner.plant_input, sys_outer.inner.plant_output])
 
 @test S == Sn.sys
 
-@test Sn.u == Sn.y == [:inner_plant_input, :inner_plant_output]
+@test Sn.u == Sn.y == [:outer₊inner₊plant_input, :outer₊inner₊plant_output] == [:outer₊inner₊plant_input, :outer₊inner₊plant_output]
 
 
 ## Test connector names

@@ -1,3 +1,5 @@
+using ModelingToolkit: AnalysisPoint
+const AP = Union{Symbol, AnalysisPoint}
 import ModelingToolkitStandardLibrary.Blocks as Blocks
 conn = ModelingToolkit.connect
 t = Blocks.t
@@ -168,42 +170,38 @@ function RobustAndOptimalControl.named_ss(
     kwargs...,
 )
 
-    if isa(inputs,  Symbol)
-        nu = 1
-    else
-        inputs = map(inputs) do inp
-            if inp isa ODESystem
-                @variables u(t)
-                if u ∈ Set(unknowns(inp))
-                    inp.u
-                else
-                    error("Input $(inp.name) is an ODESystem and not a variable")
-                end
+    inputs = vcat(inputs)
+    outputs = vcat(outputs)
+
+    inputs = map(inputs) do inp
+        if inp isa ODESystem
+            @variables u(t)
+            if u ∈ Set(unknowns(inp))
+                inp.u
             else
-                inp
+                error("Input $(inp.name) is an ODESystem and not a variable")
             end
+        else
+            inp
         end
-        nu = length(inputs)
     end
-    if isa(outputs,  Symbol)
-        ny = 1
-    else
-        outputs = map(outputs) do out
-            if out isa ODESystem
-                @variables u(t)
-                if u ∈ Set(unknowns(out))
-                    out.u
-                else
-                    error("Outut $(out.name) is an ODESystem and not a variable")
-                end
+    nu = length(inputs)
+
+    outputs = map(outputs) do out
+        if out isa ODESystem
+            @variables u(t)
+            if u ∈ Set(unknowns(out))
+                out.u
             else
-                out
+                error("Outut $(out.name) is an ODESystem and not a variable")
             end
+        else
+            out
         end
-        ny = length(outputs)
     end
+    ny = length(outputs)
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
-    symstr(x) = Symbol(string(x))
+    symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
@@ -276,25 +274,22 @@ function named_sensitivity_function(
     kwargs...,
 )
 
-    if isa(inputs,  Symbol)
-        nu = 1
-    else
-        inputs = map(inputs) do inp
-            if inp isa ODESystem
-                @variables u(t)
-                if u ∈ Set(unknowns(inp))
-                    inp.u
-                else
-                    error("Input $(inp.name) is an ODESystem and not a variable")
-                end
+    inputs = vcat(inputs)
+    inputs = map(inputs) do inp
+        if inp isa ODESystem
+            @variables u(t)
+            if u ∈ Set(unknowns(inp))
+                inp.u
             else
-                inp
+                error("Input $(inp.name) is an ODESystem and not a variable")
             end
+        else
+            inp
         end
-        nu = length(inputs)
     end
+    nu = length(inputs)
     matrices, ssys = fun(sys, inputs, args...; kwargs...)
-    symstr(x) = Symbol(string(x))
+    symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
