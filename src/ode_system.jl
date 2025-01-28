@@ -201,7 +201,7 @@ function RobustAndOptimalControl.named_ss(
     end
     ny = length(outputs)
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
-    symstr(x) = Symbol(string(x))
+    symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
@@ -289,7 +289,7 @@ function named_sensitivity_function(
     end
     nu = length(inputs)
     matrices, ssys = fun(sys, inputs, args...; kwargs...)
-    symstr(x) = Symbol(string(x))
+    symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu

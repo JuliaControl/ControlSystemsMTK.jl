@@ -152,10 +152,10 @@ code = SymbolicControlSystems.print_c_array(stdout, Cs_disc[1:7:end], xs[1:7:end
 The generated code starts by defining the interpolation vector `xs`, this variable is called `Cs_interp_vect` in the generated code. The code then defines all the ``A`` matrices as a 3-dimensional array, followed by a function that performs the interpolation `interpolate_Cs_A`. This function takes the output array as the first argument, a pointer to the 3D array with interpolation matrices, the interpolation vector as well as the interpolation variable `t`, in this document called ``v``. The same code is then repeated for the matrices ``B,C,D`` as well if they require interpolation (if they are all the same, no interpolation code is written). 
 
 ## Linearize around a trajectory
-We can linearize around a trajectory obtained from `solve` using the function [`trajectory_ss`](@ref). We provide it with a vector of time points along the trajectory at which to linearize, and in this case we specify the inputs and outputs to linearize between as analysis points `:r` and `:y`.
+We can linearize around a trajectory obtained from `solve` using the function [`trajectory_ss`](@ref). We provide it with a vector of time points along the trajectory at which to linearize, and in this case we specify the inputs and outputs to linearize between as analysis points `r` and `y`.
 ```@example BATCHLIN
 timepoints = 0:0.01:8
-Ps2, ssys = trajectory_ss(closed_loop, :r, :y, sol; t=timepoints)
+Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=timepoints)
 bodeplot(Ps2, w, legend=false)
 ```
 
