@@ -20,7 +20,6 @@ DataInterpolations = "3, 4, 5, 6, 7"
 ModelingToolkit = "9.61"
 ModelingToolkitStandardLibrary = "2"
 MonteCarloMeasurements = "1.1"
-OrdinaryDiffEq = "6"
 RobustAndOptimalControl = "0.4.14"
 Symbolics = "5, 6"
 UnPack = "1"
@@ -28,8 +27,9 @@ julia = "1.6"
 
 [extras]
 ControlSystems = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
-OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+OrdinaryDiffEqNonlinearSolve = "127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
+OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "ControlSystems", "OrdinaryDiffEq"]
+test = ["Test", "ControlSystems", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqNonlinearSolve"]
