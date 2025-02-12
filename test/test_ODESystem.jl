@@ -1,6 +1,7 @@
 using ControlSystemsMTK,
-    ControlSystemsBase, ModelingToolkit, OrdinaryDiffEqRosenbrock, RobustAndOptimalControl
+    ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl
 import ModelingToolkitStandardLibrary.Blocks as Blocks
+using OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
 conn = ModelingToolkit.connect
 connect = ModelingToolkit.connect
 ## Test SISO (single input, single output) system

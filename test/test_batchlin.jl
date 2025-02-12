@@ -1,4 +1,5 @@
 using ControlSystemsMTK, ModelingToolkit, RobustAndOptimalControl, MonteCarloMeasurements
+using OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
 using ModelingToolkit: getdefault
 unsafe_comparisons(true)
 
