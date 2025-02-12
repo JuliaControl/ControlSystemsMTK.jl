@@ -302,7 +302,7 @@ D = Differential(t)
 
 @named link1 = Link(; m = 0.2, l = 10, I = 1, g = -9.807)
 @named cart = TranslationalPosition.Mass(; m = 1, s = 0)
-@named fixed = Fixed()
+@named fixed = TranslationalPosition.Fixed()
 @named force = Force(use_support = false)
 
 eqs = [connect(link1.TX1, cart.flange)

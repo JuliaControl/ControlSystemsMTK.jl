@@ -44,7 +44,7 @@ using DataInterpolations
 # code = SymbolicControlSystems.print_c_array(stdout, Ps, xs, "gain_scheduled_controller", struct_name="hej", struct_type="kaj")
 
 ## Simulate
-using OrdinaryDiffEq, ControlSystemsBase
+using OrdinaryDiffEqRosenbrock, ControlSystemsBase
 import ModelingToolkitStandardLibrary.Blocks
 
 @named fb = Blocks.Add(k2=-1)
