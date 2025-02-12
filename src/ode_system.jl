@@ -202,10 +202,9 @@ function RobustAndOptimalControl.named_ss(
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
     symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
-    fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(sys.B[:, nu+1:end]))) .+ nu
+        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
         u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
         lsys = causal_simplification(matrices, u2du)
     else
@@ -231,6 +230,8 @@ function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}})
     B = sys.B[:, 1:nu]
     Iu = u_with_du_inds .== (1:nu)'
     E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
+
+    fm(x) = convert(Matrix{Float64}, x)
 
     Ae = cat(sys.A, -I(ndu), dims=(1,2))
     Be = [B; Iu]
