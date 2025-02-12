@@ -199,29 +199,15 @@ function RobustAndOptimalControl.named_ss(
             out
         end
     end
-    ny = length(outputs)
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
     symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
-        nx = size(matrices.A, 1)
-         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end])))
-        B̄ = matrices.B[:, duinds .+ nu]
-        ndu = length(duinds)
-        B = matrices.B[:, 1:nu]
-        Iu = duinds .== (1:nu)'
-        E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
-
-        Ae = cat(matrices.A, -I(ndu), dims=(1,2))
-        Be = [B; Iu]
-        Ce = [fm(matrices.C) zeros(ny, ndu)]
-        De = fm(matrices.D[:, 1:nu])
-        dsys = dss(Ae, E, Be, Ce, De)
-        lsys = ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
-        # unames = [unames; Symbol.("der_" .* string.(unames))]
-        # sys = ss(matrices...)
+        # This indicates that input derivatives are present
+        duinds = findall(any(!iszero, eachcol(sys.B[:, nu+1:end]))) .+ nu
+        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        lsys = causal_simplification(matrices, u2du)
     else
         lsys = ss(matrices...)
     end
@@ -232,6 +218,26 @@ function RobustAndOptimalControl.named_ss(
         y = symstr.(outputs),
         name = string(Base.nameof(sys)),
     )
+end
+
+function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}})
+    nx = size(sys.A, 1)
+    ny = size(sys.C, 1)
+    ndu = length(u2duinds)
+    nu = size(sys.B, 2) - ndu
+    u_with_du_inds = first.(u2duinds)
+    duinds = last.(u2duinds)
+    B̄ = sys.B[:, duinds]
+    B = sys.B[:, 1:nu]
+    Iu = u_with_du_inds .== (1:nu)'
+    E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
+
+    Ae = cat(sys.A, -I(ndu), dims=(1,2))
+    Be = [B; Iu]
+    Ce = [fm(sys.C) zeros(ny, ndu)]
+    De = fm(sys.D[:, 1:nu])
+    dsys = dss(Ae, E, Be, Ce, De)
+    ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
 end
 
 for f in [:sensitivity, :comp_sensitivity, :looptransfer]
