@@ -139,7 +139,7 @@ ModelingToolkit has facilities for symbolic linearization that can be used on su
 We start by building a system mode, we'll use a model of two masses connected by a flexible transmission
 ```@example LINEAIZE_SYMBOLIC
 using ControlSystemsMTK, ControlSystemsBase
-using ModelingToolkit, OrdinaryDiffEq, LinearAlgebra
+using ModelingToolkit, LinearAlgebra
 using ModelingToolkitStandardLibrary.Mechanical.Rotational
 using ModelingToolkitStandardLibrary.Blocks: Sine
 using ModelingToolkit: connect
