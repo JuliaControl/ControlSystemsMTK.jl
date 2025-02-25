@@ -1,7 +1,8 @@
 using ControlSystemsMTK,
-    ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl
+    ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl, Test
 import ModelingToolkitStandardLibrary.Blocks as Blocks
 using OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
+using LinearAlgebra
 conn = ModelingToolkit.connect
 connect = ModelingToolkit.connect
 ## Test SISO (single input, single output) system
@@ -40,17 +41,18 @@ sol2 = solve(prob, Rodas5())
 isinteractive() && plot(sol2)
 
 Pc = complete(P)
-Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0])
+op = Dict(Pc.input.u => 0.0)
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0]; op)
 @test Q[] ≈ 2.0
 
-Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.output.u => 2.0])
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.output.u => 2.0]; op)
 @test Q[] ≈ 2.0
 
 #Mix states and outputs
-Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0, Pc.output.u => 3])
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0, Pc.output.u => 3]; op)
 @test Q[] ≈ 2.0 + 3
 
-matrices, ssys = linearize(Pc, [Pc.input.u], [Pc.output.u])
+matrices, ssys = linearize(Pc, [Pc.input.u], [Pc.output.u]; op)
 
 Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.x[1] => 2.0])
 @test Q[] ≈ 2.0
@@ -58,7 +60,7 @@ Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.x[1] => 2.
 Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.output.u => 2.0])
 @test Q[] ≈ 2.0
 
-P1 = ss(Pc, [Pc.input.u], [Pc.output.u])
+P1 = ss(Pc, [Pc.input.u], [Pc.output.u]; op)
 @test P1 == P0
 
 
@@ -66,7 +68,7 @@ P1 = ss(Pc, [Pc.input.u], [Pc.output.u])
 # === Go the other way, ODESystem -> StateSpace ================================
 x = unknowns(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
 @unpack input, output = P
-P02_named = named_ss(P, [input.u], [output.u])
+P02_named = named_ss(P, [input.u], [output.u]; op)
 @test P02_named.x == [Symbol("(x(t))[1]")]
 @test P02_named.u == [Symbol("input₊u(t)")]
 @test P02_named.y == [Symbol("output₊u(t)")]
@@ -76,7 +78,7 @@ P02 = ss(P02_named)
 
 # same for controller
 x = unknowns(C)
-@nonamespace C02 = named_ss(C, [C.input], [C.output])
+@nonamespace C02 = named_ss(C, [C.input], [C.output]; op)
 @test ss(C02) == C0
 
 
@@ -216,7 +218,8 @@ end
 
 model = SystemModel() |> complete
 
-lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
+op = Dict(model.inertia1.flange_b.phi => 0.0, model.torque.tau.u => 0)
+lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi]; op)
 @test -1000 ∈ lsys.A
 @test -10 ∈ lsys.A
 @test 1000 ∈ lsys.A
@@ -376,7 +379,7 @@ Gb = minreal(Gb, 1e-8)
 @test minimum(abs, tzeros(Gb) .- z) < sqrt(eps())
 
 w = exp10.(LinRange(-12, 2, 2000))
-ControlSystemsBase.bodeplot([G, G2, minreal(G, 1e-8)], w)
+# ControlSystemsBase.bodeplot([G, G2, minreal(G, 1e-8)], w)
 
 
 ##
