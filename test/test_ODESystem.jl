@@ -295,7 +295,7 @@ using ModelingToolkitStandardLibrary.Mechanical.TranslationalPosition
 using Test
 
 using ControlSystemsMTK
-using ControlSystemsMTK.ControlSystemsBase: sminreal, minreal, poles
+using ControlSystemsMTK.ControlSystemsBase: sminreal, minreal, poles, ss, tf
 connect = ModelingToolkit.connect
 
 @independent_variables t
@@ -348,3 +348,38 @@ op2[cart.f] = 0
 @test G.nx == 4
 @test G.nu == length(lin_inputs)
 @test G.ny == length(lin_outputs)
+
+## Test difficult `named_ss` simplification
+using ControlSystemsMTK, ControlSystemsBase, RobustAndOptimalControl
+lsys = (A = [0.0 2.778983834717109e8 1.4122312296634873e6 0.0; 0.0 0.0 0.0 0.037848975765016724; 0.0 24.837541148074962 0.12622006230897712 0.0; -0.0 -4.620724819774693 -0.023481719514324866 -0.6841991610512456], B = [-5.042589978197361e8 0.0; -0.0 0.0; -45.068824982602656 -0.0; 8.384511049369085 54.98555939873381], C = [0.0 0.0 0.954929658551372 0.0], D = [0.0 0.0])
+
+# lsys = (A = [-0.0075449237853825925 1.6716817118020731e-6 0.0; 1864.7356343162514 -0.4131578457122937 0.0; 0.011864343330426718 -2.6287085638214332e-6 0.0], B = [0.0 0.0; 0.0 52566.418015009294; 0.0 0.3284546792274811], C = [1.4683007399899215e8 0.0 0.0], D = [-9.157636303058283e7 0.0])
+
+G = ControlSystemsMTK.causal_simplification(lsys, [1=>2])
+G2 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=false)
+G2 = minreal(G2, 1e-12)
+
+@test dcgain(G, 1e-5)[] ≈ dcgain(G2, 1e-5)[] rtol=1e-3
+@test freqresp(G, 1)[] ≈ freqresp(G2, 1)[]
+@test freqresp(G, 10)[] ≈ freqresp(G2, 10)[]
+
+z = 0.462726166562343204837317130554462562
+
+@test minimum(abs, tzeros(G) .- z) < sqrt(eps())
+@test minimum(abs, tzeros(G2) .- z) < sqrt(eps())
+
+# using GenericSchur
+
+Gb = balance_statespace(G)[1]
+Gb = minreal(Gb, 1e-8)
+@test Gb.nx == 2
+@test minimum(abs, tzeros(Gb) .- z) < sqrt(eps())
+
+w = exp10.(LinRange(-12, 2, 2000))
+ControlSystemsBase.bodeplot([G, G2, minreal(G, 1e-8)], w)
+
+
+##
+
+# S = schur(A,B)
+# V = eigvecs(S)
