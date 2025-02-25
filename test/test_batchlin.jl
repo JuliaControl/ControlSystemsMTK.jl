@@ -1,6 +1,8 @@
 using ControlSystemsMTK, ModelingToolkit, RobustAndOptimalControl, MonteCarloMeasurements
 using OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
+using ModelingToolkitStandardLibrary.Blocks
 using ModelingToolkit: getdefault
+using Test
 unsafe_comparisons(true)
 
 # Create a model
@@ -24,7 +26,7 @@ sample_within_bounds((l, u)) = (u - l) * rand() + l
 # Create a vector of operating points
 N = 10
 xs = range(getbounds(x)[1], getbounds(x)[2], length=N)
-ops = Dict.(x .=> xs)
+ops = Dict.(u.u => 0, x .=> xs)
 
 inputs, outputs = [u.u], [y.u]
 Ps, ssys = batch_ss(duffing, inputs, outputs , ops)
@@ -55,11 +57,11 @@ import ModelingToolkitStandardLibrary.Blocks
 
 
 closed_loop_eqs = [
-    connect(ref.output, :r, F.input)
-    connect(F.output, fb.input1)
-    connect(duffing.y, :y, fb.input2)
-    connect(fb.output, C.input)
-    connect(C.output, duffing.u)
+    ModelingToolkit.connect(ref.output, :r, F.input)
+    ModelingToolkit.connect(F.output, fb.input1)
+    ModelingToolkit.connect(duffing.y, :y, fb.input2)
+    ModelingToolkit.connect(fb.output, C.input)
+    ModelingToolkit.connect(C.output, duffing.u)
 ]
 
 @named closed_loop = ODESystem(closed_loop_eqs, t, systems=[duffing, C, fb, ref, F])
@@ -73,6 +75,7 @@ sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
 
 time = 0:0.1:8
 inputs, outputs = [duffing.u.u], [duffing.y.u]
+op = Dict(u.u => 0)
 Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=time)
 @test length(Ps2) == length(time)
 # bodeplot(Ps2)

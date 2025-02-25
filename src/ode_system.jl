@@ -523,6 +523,8 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
+
+    # NOTE: we call linearization_funciton twice :( The first call is to get x=unknowns(ssys), the second call provides the operating points.
     lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
     x = unknowns(ssys)
     defs = ModelingToolkit.defaults(sys)
@@ -536,8 +538,10 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         ops = reduce(vcat, opsv)
         t = repeat(t, inner = length(ops) ÷ length(t))
     end
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...)
     lins = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
+        # linearize(sys, inputs, outputs; op, t, allow_input_derivatives, initialize=false)[1]
     end
     (; linsystems = [ss(l...) for l in lins], ssys, ops)
 end

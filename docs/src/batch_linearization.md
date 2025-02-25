@@ -96,7 +96,7 @@ If you plot the Nyquist curve using the `plotly()` backend rather than the defau
 Above, we tuned one controller for each operating point, wouldn't it be nice if we had some features to simulate a [gain-scheduled controller](https://en.wikipedia.org/wiki/Gain_scheduling) that interpolates between the different controllers depending on the operating pont? [`GainScheduledStateSpace`](@ref) is such a thing, we show how to use it below. For fun, we simulate some reference step responses for each individual controller in the array `Cs` and end with simulating the gain-scheduled controller.
 
 ```@example BATCHLIN
-using OrdinaryDiffEq
+using OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
 using DataInterpolations # Required to interpolate between the controllers
 @named fb  = Blocks.Add(k2=-1)
 @named ref = Blocks.Square(frequency=1/6, amplitude=0.5, offset=0.5, start_time=1)
@@ -134,7 +134,7 @@ eqs = [
 ]
 @named closed_loop = ODESystem(eqs, t, systems=[duffing, Cgs, fb, ref, F])
 prob = ODEProblem(structural_simplify(closed_loop), [F.xd => 0], (0.0, 8.0))
-sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8, initializealg=NoInit())
+sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8, initializealg=SciMLBase.NoInit())
 plot!(sol, idxs=[duffing.y.u, duffing.u.u], l=(2, :red), lab="Gain scheduled")
 plot!(sol, idxs=F.output.u, l=(1, :black, :dash, 0.5), lab="Ref")
 ```
