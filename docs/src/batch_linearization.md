@@ -8,7 +8,6 @@ This example will demonstrate how to linearize a nonlinear ModelingToolkit model
 The model will be a simple Duffing oscillator:
 ```@example BATCHLIN
 using ControlSystemsMTK, ModelingToolkit, MonteCarloMeasurements, ModelingToolkitStandardLibrary.Blocks
-using ModelingToolkit: getdefault
 unsafe_comparisons(true)
 
 # Create a model
@@ -26,7 +25,7 @@ eqs = [D(x) ~ v
        y.u ~ x]
 
 
-@named duffing = ODESystem(eqs, t, systems=[y, u], defaults=[u.u => 0])
+@named duffing = ODESystem(eqs, t, systems=[y, u])
 ```
 
 ## Batch linearization
@@ -34,7 +33,7 @@ To perform batch linearization, we create a vector of operating points, and then
 ```@example BATCHLIN
 N = 16 # Number of samples
 xs = range(getbounds(x)[1], getbounds(x)[2], length=N)
-ops = Dict.(x .=> xs)
+ops = Dict.(u.u => 0, x .=> xs)
 ```
 
 Just like [`ModelingToolkit.linearize`](@ref), [`batch_ss`](@ref) takes the set of inputs and the set of outputs to linearize between.
@@ -96,7 +95,7 @@ If you plot the Nyquist curve using the `plotly()` backend rather than the defau
 Above, we tuned one controller for each operating point, wouldn't it be nice if we had some features to simulate a [gain-scheduled controller](https://en.wikipedia.org/wiki/Gain_scheduling) that interpolates between the different controllers depending on the operating pont? [`GainScheduledStateSpace`](@ref) is such a thing, we show how to use it below. For fun, we simulate some reference step responses for each individual controller in the array `Cs` and end with simulating the gain-scheduled controller.
 
 ```@example BATCHLIN
-using OrdinaryDiffEq
+using OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
 using DataInterpolations # Required to interpolate between the controllers
 @named fb  = Blocks.Add(k2=-1)
 @named ref = Blocks.Square(frequency=1/6, amplitude=0.5, offset=0.5, start_time=1)
@@ -134,7 +133,7 @@ eqs = [
 ]
 @named closed_loop = ODESystem(eqs, t, systems=[duffing, Cgs, fb, ref, F])
 prob = ODEProblem(structural_simplify(closed_loop), [F.xd => 0], (0.0, 8.0))
-sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8, initializealg=NoInit())
+sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8, initializealg=SciMLBase.NoInit())
 plot!(sol, idxs=[duffing.y.u, duffing.u.u], l=(2, :red), lab="Gain scheduled")
 plot!(sol, idxs=F.output.u, l=(1, :black, :dash, 0.5), lab="Ref")
 ```
@@ -155,7 +154,7 @@ The generated code starts by defining the interpolation vector `xs`, this variab
 We can linearize around a trajectory obtained from `solve` using the function [`trajectory_ss`](@ref). We provide it with a vector of time points along the trajectory at which to linearize, and in this case we specify the inputs and outputs to linearize between as analysis points `r` and `y`.
 ```@example BATCHLIN
 timepoints = 0:0.01:8
-Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=timepoints)
+Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=timepoints, initialize=true, verbose=true)
 bodeplot(Ps2, w, legend=false)
 ```
 

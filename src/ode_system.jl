@@ -154,12 +154,14 @@ end
 
 
 """
-    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; kwargs...)
+    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; descriptor=true, kwargs...)
 
 Convert an `ODESystem` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`.
 
-This method automatically converts systems that MTK has failed to produce a proper form for into a proper linear statespace system. Learn more about how that is done here:
+If `descriptor = true` (default), this method automatically converts systems that MTK has failed to produce a proper form for into a proper linear statespace system using the method described here:
 https://juliacontrol.github.io/ControlSystemsMTK.jl/dev/#Internals:-Transformation-of-non-proper-models-to-proper-statespace-form
+If `descriptor = false`, the system is instead converted to a statespace realization using `sys[:,uinds] + sys[:,duinds]*tf('s')`, which tends to result in a larger realization on which the user may want to call `minreal(sys, tol)` with a carefully selected tolerance.
+
 
 See also [`ModelingToolkit.linearize`](@ref) which is the lower-level function called internally. The functions [`get_named_sensitivity`](@ref), [`get_named_comp_sensitivity`](@ref), [`get_named_looptransfer`](@ref) similarily provide convenient ways to compute sensitivity functions while retaining signal names in the same way as `named_ss`. The corresponding lower-level functions `get_sensitivity`, `get_comp_sensitivity` and `get_looptransfer` are available in ModelingToolkitStandardLibrary.Blocks and are documented in [MTKstdlib: Linear analysis](https://docs.sciml.ai/ModelingToolkitStandardLibrary/stable/API/linear_analysis/).
 """
@@ -167,6 +169,7 @@ function RobustAndOptimalControl.named_ss(
     sys::ModelingToolkit.AbstractTimeDependentSystem,
     inputs,
     outputs;
+    descriptor = true,
     kwargs...,
 )
 
@@ -206,7 +209,7 @@ function RobustAndOptimalControl.named_ss(
         # This indicates that input derivatives are present
         duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
         u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
-        lsys = causal_simplification(matrices, u2du)
+        lsys = causal_simplification(matrices, u2du; descriptor)
     else
         lsys = ss(matrices...)
     end
@@ -219,26 +222,33 @@ function RobustAndOptimalControl.named_ss(
     )
 end
 
-function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}})
+function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true)
+    fm(x) = convert(Matrix{Float64}, x)
     nx = size(sys.A, 1)
     ny = size(sys.C, 1)
     ndu = length(u2duinds)
     nu = size(sys.B, 2) - ndu
     u_with_du_inds = first.(u2duinds)
     duinds = last.(u2duinds)
-    B̄ = sys.B[:, duinds]
     B = sys.B[:, 1:nu]
-    Iu = u_with_du_inds .== (1:nu)'
-    E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
+    B̄ = sys.B[:, duinds]
+    D = sys.D[:, 1:nu]
+    D̄ = sys.D[:, duinds]
+    iszero(fm(D̄)) || error("Nonzero feedthrough matrix from input derivative not supported")
+    if descriptor
+        Iu = u_with_du_inds .== (1:nu)'
+        E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
 
-    fm(x) = convert(Matrix{Float64}, x)
-
-    Ae = cat(sys.A, -I(ndu), dims=(1,2))
-    Be = [B; Iu]
-    Ce = [fm(sys.C) zeros(ny, ndu)]
-    De = fm(sys.D[:, 1:nu])
-    dsys = dss(Ae, E, Be, Ce, De)
-    ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
+        Ae = cat(sys.A, -I(ndu), dims=(1,2))
+        # Ae[1:nx, nx+1:end] .= B
+        Be = [B; Iu]
+        Ce = [fm(sys.C) zeros(ny, ndu)]
+        De = fm(D)
+        dsys = dss(Ae, E, Be, Ce, De)
+        return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
+    else
+        ss(sys.A, B, sys.C, D) + ss(sys.A, B̄, sys.C, D̄)*tf('s')
+    end
 end
 
 for f in [:sensitivity, :comp_sensitivity, :looptransfer]
@@ -513,7 +523,11 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
+
+    # NOTE: we call linearization_funciton twice :( The first call is to get x=unknowns(ssys), the second call provides the operating points.
+    # lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined = false, kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined = false, kwargs...)
+
     x = unknowns(ssys)
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
@@ -526,8 +540,10 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         ops = reduce(vcat, opsv)
         t = repeat(t, inner = length(ops) ÷ length(t))
     end
+    # lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], initialize, kwargs...)
     lins = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
+        # linearize(sys, inputs, outputs; op, t, allow_input_derivatives, initialize=false)[1]
     end
     (; linsystems = [ss(l...) for l in lins], ssys, ops)
 end
@@ -662,7 +678,7 @@ function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1]
     @variables x(t)[1:nx]=x [
         description = "State variables of gain-scheduled statespace system $name",
     ]
-    @variables v(t) = 0 [
+    @variables v(t) [
         description = "Scheduling variable of gain-scheduled statespace system $name",
     ]
     

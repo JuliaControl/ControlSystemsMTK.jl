@@ -1,7 +1,8 @@
 using ControlSystemsMTK,
-    ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl
+    ControlSystemsBase, ModelingToolkit, RobustAndOptimalControl, Test
 import ModelingToolkitStandardLibrary.Blocks as Blocks
 using OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
+using LinearAlgebra
 conn = ModelingToolkit.connect
 connect = ModelingToolkit.connect
 ## Test SISO (single input, single output) system
@@ -40,17 +41,18 @@ sol2 = solve(prob, Rodas5())
 isinteractive() && plot(sol2)
 
 Pc = complete(P)
-Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0])
+op = Dict(Pc.input.u => 0.0)
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0]; op)
 @test Q[] ≈ 2.0
 
-Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.output.u => 2.0])
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.output.u => 2.0]; op)
 @test Q[] ≈ 2.0
 
 #Mix states and outputs
-Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0, Pc.output.u => 3])
+Q = ControlSystemsMTK.build_quadratic_cost_matrix(Pc, [Pc.input.u], [Pc.x[1] => 2.0, Pc.output.u => 3]; op)
 @test Q[] ≈ 2.0 + 3
 
-matrices, ssys = linearize(Pc, [Pc.input.u], [Pc.output.u])
+matrices, ssys = linearize(Pc, [Pc.input.u], [Pc.output.u]; op)
 
 Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.x[1] => 2.0])
 @test Q[] ≈ 2.0
@@ -58,7 +60,7 @@ Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.x[1] => 2.
 Q = ControlSystemsMTK.build_quadratic_cost_matrix(matrices, ssys, [Pc.output.u => 2.0])
 @test Q[] ≈ 2.0
 
-P1 = ss(Pc, [Pc.input.u], [Pc.output.u])
+P1 = ss(Pc, [Pc.input.u], [Pc.output.u]; op)
 @test P1 == P0
 
 
@@ -66,7 +68,7 @@ P1 = ss(Pc, [Pc.input.u], [Pc.output.u])
 # === Go the other way, ODESystem -> StateSpace ================================
 x = unknowns(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
 @unpack input, output = P
-P02_named = named_ss(P, [input.u], [output.u])
+P02_named = named_ss(P, [input.u], [output.u]; op)
 @test P02_named.x == [Symbol("(x(t))[1]")]
 @test P02_named.u == [Symbol("input₊u(t)")]
 @test P02_named.y == [Symbol("output₊u(t)")]
@@ -76,7 +78,7 @@ P02 = ss(P02_named)
 
 # same for controller
 x = unknowns(C)
-@nonamespace C02 = named_ss(C, [C.input], [C.output])
+@nonamespace C02 = named_ss(C, [C.input], [C.output]; op)
 @test ss(C02) == C0
 
 
@@ -216,7 +218,8 @@ end
 
 model = SystemModel() |> complete
 
-lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
+op = Dict(model.inertia1.flange_b.phi => 0.0, model.torque.tau.u => 0)
+lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi]; op)
 @test -1000 ∈ lsys.A
 @test -10 ∈ lsys.A
 @test 1000 ∈ lsys.A
@@ -295,7 +298,7 @@ using ModelingToolkitStandardLibrary.Mechanical.TranslationalPosition
 using Test
 
 using ControlSystemsMTK
-using ControlSystemsMTK.ControlSystemsBase: sminreal, minreal, poles
+using ControlSystemsMTK.ControlSystemsBase: sminreal, minreal, poles, ss, tf
 connect = ModelingToolkit.connect
 
 @independent_variables t
@@ -348,3 +351,38 @@ op2[cart.f] = 0
 @test G.nx == 4
 @test G.nu == length(lin_inputs)
 @test G.ny == length(lin_outputs)
+
+## Test difficult `named_ss` simplification
+using ControlSystemsMTK, ControlSystemsBase, RobustAndOptimalControl
+lsys = (A = [0.0 2.778983834717109e8 1.4122312296634873e6 0.0; 0.0 0.0 0.0 0.037848975765016724; 0.0 24.837541148074962 0.12622006230897712 0.0; -0.0 -4.620724819774693 -0.023481719514324866 -0.6841991610512456], B = [-5.042589978197361e8 0.0; -0.0 0.0; -45.068824982602656 -0.0; 8.384511049369085 54.98555939873381], C = [0.0 0.0 0.954929658551372 0.0], D = [0.0 0.0])
+
+# lsys = (A = [-0.0075449237853825925 1.6716817118020731e-6 0.0; 1864.7356343162514 -0.4131578457122937 0.0; 0.011864343330426718 -2.6287085638214332e-6 0.0], B = [0.0 0.0; 0.0 52566.418015009294; 0.0 0.3284546792274811], C = [1.4683007399899215e8 0.0 0.0], D = [-9.157636303058283e7 0.0])
+
+G = ControlSystemsMTK.causal_simplification(lsys, [1=>2])
+G2 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=false)
+G2 = minreal(G2, 1e-12)
+
+@test dcgain(G, 1e-5)[] ≈ dcgain(G2, 1e-5)[] rtol=1e-3
+@test freqresp(G, 1)[] ≈ freqresp(G2, 1)[]
+@test freqresp(G, 10)[] ≈ freqresp(G2, 10)[]
+
+z = 0.462726166562343204837317130554462562
+
+@test minimum(abs, tzeros(G) .- z) < sqrt(eps())
+@test minimum(abs, tzeros(G2) .- z) < sqrt(eps())
+
+# using GenericSchur
+
+Gb = balance_statespace(G)[1]
+Gb = minreal(Gb, 1e-8)
+@test Gb.nx == 2
+@test minimum(abs, tzeros(Gb) .- z) < sqrt(eps())
+
+w = exp10.(LinRange(-12, 2, 2000))
+# ControlSystemsBase.bodeplot([G, G2, minreal(G, 1e-8)], w)
+
+
+##
+
+# S = schur(A,B)
+# V = eigvecs(S)

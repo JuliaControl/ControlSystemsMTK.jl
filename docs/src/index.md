@@ -139,7 +139,7 @@ ModelingToolkit has facilities for symbolic linearization that can be used on su
 We start by building a system mode, we'll use a model of two masses connected by a flexible transmission
 ```@example LINEAIZE_SYMBOLIC
 using ControlSystemsMTK, ControlSystemsBase
-using ModelingToolkit, OrdinaryDiffEq, LinearAlgebra
+using ModelingToolkit, LinearAlgebra
 using ModelingToolkitStandardLibrary.Mechanical.Rotational
 using ModelingToolkitStandardLibrary.Blocks: Sine
 using ModelingToolkit: connect
@@ -178,7 +178,8 @@ model = SystemModel() |> complete
 ### Numeric linearization
 We can linearize this model numerically using `named_ss`, this produces a `NamedStateSpace{Continuous, Float64}`
 ```@example LINEAIZE_SYMBOLIC
-lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi], op = Dict(model.torque.tau.u => 0))
+op = Dict(model.inertia1.flange_b.phi => 0.0, model.torque.tau.u => 0)
+lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi]; op)
 ```
 ### Symbolic linearization
 If we instead call `linearize_symbolic` and pass the jacobians into `ss`, we get a `StateSpace{Continuous, Num}`
