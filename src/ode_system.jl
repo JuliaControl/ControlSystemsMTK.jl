@@ -525,7 +525,9 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
 
     # NOTE: we call linearization_funciton twice :( The first call is to get x=unknowns(ssys), the second call provides the operating points.
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; kwargs...)
+    # lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined = false, kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined = false, kwargs...)
+
     x = unknowns(ssys)
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
@@ -538,7 +540,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         ops = reduce(vcat, opsv)
         t = repeat(t, inner = length(ops) ÷ length(t))
     end
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...)
+    # lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], initialize, kwargs...)
     lins = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
         # linearize(sys, inputs, outputs; op, t, allow_input_derivatives, initialize=false)[1]
@@ -676,7 +678,7 @@ function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1]
     @variables x(t)[1:nx]=x [
         description = "State variables of gain-scheduled statespace system $name",
     ]
-    @variables v(t) = 0 [
+    @variables v(t) [
         description = "Scheduling variable of gain-scheduled statespace system $name",
     ]
     

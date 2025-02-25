@@ -8,7 +8,6 @@ This example will demonstrate how to linearize a nonlinear ModelingToolkit model
 The model will be a simple Duffing oscillator:
 ```@example BATCHLIN
 using ControlSystemsMTK, ModelingToolkit, MonteCarloMeasurements, ModelingToolkitStandardLibrary.Blocks
-using ModelingToolkit: getdefault
 unsafe_comparisons(true)
 
 # Create a model
@@ -26,7 +25,7 @@ eqs = [D(x) ~ v
        y.u ~ x]
 
 
-@named duffing = ODESystem(eqs, t, systems=[y, u], defaults=[u.u => 0])
+@named duffing = ODESystem(eqs, t, systems=[y, u])
 ```
 
 ## Batch linearization
@@ -34,7 +33,7 @@ To perform batch linearization, we create a vector of operating points, and then
 ```@example BATCHLIN
 N = 16 # Number of samples
 xs = range(getbounds(x)[1], getbounds(x)[2], length=N)
-ops = Dict.(x .=> xs)
+ops = Dict.(u.u => 0, x .=> xs)
 ```
 
 Just like [`ModelingToolkit.linearize`](@ref), [`batch_ss`](@ref) takes the set of inputs and the set of outputs to linearize between.
@@ -155,7 +154,7 @@ The generated code starts by defining the interpolation vector `xs`, this variab
 We can linearize around a trajectory obtained from `solve` using the function [`trajectory_ss`](@ref). We provide it with a vector of time points along the trajectory at which to linearize, and in this case we specify the inputs and outputs to linearize between as analysis points `r` and `y`.
 ```@example BATCHLIN
 timepoints = 0:0.01:8
-Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=timepoints)
+Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=timepoints, initialize=true, verbose=true)
 bodeplot(Ps2, w, legend=false)
 ```
 
