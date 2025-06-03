@@ -12,7 +12,7 @@ P0 = tf(1.0, [1, 1]) |> ss
 C0 = pid(1, 1) * tf(1, [0.01, 1]) |> ss
 
 @named P = ODESystem(P0)
-@test P isa ODESystem
+@test P isa System
 # @test length(ModelingToolkit.outputs(P)) == P0.ny
 # @test length(ModelingToolkit.inputs(P)) == P0.nu
 # @named nonlinear_P = sconnect(x->sign(x)*sqrt(abs(x)), P) # apply input-nonlinearity
@@ -167,7 +167,7 @@ x0 = Pair[
 ]
 p = Pair[]
 
-prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), p, jac = true)
+prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), jac = true)
 sol = solve(prob, Rodas5(), saveat = 0:0.01:20)
 if isinteractive()
     @show sol.retcode

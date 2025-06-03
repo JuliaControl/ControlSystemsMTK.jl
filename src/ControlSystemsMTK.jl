@@ -20,7 +20,7 @@ using ModelingToolkit, ControlSystemsBase
 using ControlSystemsBase: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
 # using ControlSystemIdentification
 using RobustAndOptimalControl, MonteCarloMeasurements
-import ModelingToolkit: ODESystem, FnType, Symbolics
+import ModelingToolkit: System as ODESystem, FnType, Symbolics
 using ModelingToolkit: unknowns, observed, isdifferential
 using Symbolics
 using Symbolics: jacobian, solve_for

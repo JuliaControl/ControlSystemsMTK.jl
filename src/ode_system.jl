@@ -3,10 +3,10 @@ const AP = Union{Symbol, AnalysisPoint}
 import ModelingToolkitStandardLibrary.Blocks as Blocks
 conn = ModelingToolkit.connect
 t = Blocks.t
-ModelingToolkit.ODESystem(sys::LTISystem; kwargs...) = ODESystem(ss(sys); kwargs...)
+ModelingToolkit.System(sys::LTISystem; kwargs...) = System(ss(sys); kwargs...)
 
 """
-    ModelingToolkit.ODESystem(sys::AbstractStateSpace; name::Symbol, x0 = zeros(sys.nx), x_names, u_names, y_names)
+    ModelingToolkit.System(sys::AbstractStateSpace; name::Symbol, x0 = zeros(sys.nx), x_names, u_names, y_names)
 
 Create an ODESystem from `sys::StateSpace`. 
 
@@ -19,7 +19,7 @@ The arguments below are automatically set if the system is a `NamedStateSpace`.
 - `u_names`: A vector of symbols with input names. 
 - `y_names`: A vector of symbols with output names. 
 """
-function ModelingToolkit.ODESystem(
+function ModelingToolkit.System(
     sys::AbstractStateSpace;
     name::Symbol,
     x0 = zeros(sys.nx),
@@ -39,7 +39,7 @@ function ModelingToolkit.ODESystem(
         [uc[i].u ~ input.u[i] for i in 1:length(uc)];
         [yc[i].u ~ output.u[i] for i in 1:length(yc)];
     ]
-    extend(ODESystem(eqs, t; name, systems), ssblock)
+    extend(System(eqs, t; name, systems), ssblock)
 end
 
 """
@@ -58,7 +58,7 @@ function sconnect(
     input::Union{Function, Num},
     sys::T;
     name = Symbol("$(sys.name) with input"),
-) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
+) where {T<:ModelingToolkit.AbstractSystem}
     @named output = Blocks.RealOutput()
     T(
         [
@@ -80,7 +80,7 @@ function sconnect(
     sys1::T,
     sys2::T;
     name = Symbol("$(sys1.name)*$(sys2.name)"),
-) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
+) where {T<:ModelingToolkit.AbstractSystem}
     @named output = Blocks.RealOutput() # TODO: missing size
     @named input = Blocks.RealInput() # TODO: missing size
     T(
@@ -106,7 +106,7 @@ The system `G` will be a new system with `input` and `output` connectors.
 function ControlSystemsBase.feedback(
     loopgain::T;
     name = Symbol("feedback $(loopgain.name)"),
-) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
+) where {T<:ModelingToolkit.AbstractSystem}
     add = Blocks.Add(k1 = 1, k2 = -1, name = :feedback)
     @named input = Blocks.RealInput()
     @named output = Blocks.RealOutput()
@@ -123,7 +123,7 @@ function ControlSystemsBase.feedback(
     )
 end
 
-function Base.:(*)(s1::T, s2::T) where {T<:ModelingToolkit.AbstractTimeDependentSystem}
+function Base.:(*)(s1::T, s2::T) where {T<:ModelingToolkit.AbstractSystem}
     name = Symbol(string(s1.name) * "_" * string(s2.name))
     @named input = Blocks.RealInput()
     @named output = Blocks.RealOutput()
@@ -144,7 +144,7 @@ numeric(x::Num) = x.val
 
 
 function ControlSystemsBase.ss(
-    sys::ModelingToolkit.AbstractTimeDependentSystem,
+    sys::ModelingToolkit.AbstractSystem,
     inputs,
     outputs;
     kwargs...
@@ -166,7 +166,7 @@ If `descriptor = false`, the system is instead converted to a statespace realiza
 See also [`ModelingToolkit.linearize`](@ref) which is the lower-level function called internally. The functions [`get_named_sensitivity`](@ref), [`get_named_comp_sensitivity`](@ref), [`get_named_looptransfer`](@ref) similarily provide convenient ways to compute sensitivity functions while retaining signal names in the same way as `named_ss`. The corresponding lower-level functions `get_sensitivity`, `get_comp_sensitivity` and `get_looptransfer` are available in ModelingToolkitStandardLibrary.Blocks and are documented in [MTKstdlib: Linear analysis](https://docs.sciml.ai/ModelingToolkitStandardLibrary/stable/API/linear_analysis/).
 """
 function RobustAndOptimalControl.named_ss(
-    sys::ModelingToolkit.AbstractTimeDependentSystem,
+    sys::ModelingToolkit.AbstractSystem,
     inputs,
     outputs;
     descriptor = true,
@@ -177,7 +177,7 @@ function RobustAndOptimalControl.named_ss(
     outputs = vcat(outputs)
 
     inputs = map(inputs) do inp
-        if inp isa ODESystem
+        if inp isa System
             @variables u(t)
             if u ∈ Set(unknowns(inp))
                 inp.u
@@ -191,7 +191,7 @@ function RobustAndOptimalControl.named_ss(
     nu = length(inputs)
 
     outputs = map(outputs) do out
-        if out isa ODESystem
+        if out isa System
             @variables u(t)
             if u ∈ Set(unknowns(out))
                 out.u
@@ -286,14 +286,14 @@ get_named_looptransfer
 
 function named_sensitivity_function(
     fun,
-    sys::ModelingToolkit.AbstractTimeDependentSystem,
+    sys::ModelingToolkit.AbstractSystem,
     inputs, args...;
     kwargs...,
 )
 
     inputs = vcat(inputs)
     inputs = map(inputs) do inp
-        if inp isa ODESystem
+        if inp isa System
             @variables u(t)
             if u ∈ Set(unknowns(inp))
                 inp.u
@@ -362,7 +362,7 @@ The second problem above, the ordering of the states, can be worked around using
 - `ssys`: Output of [`linearize`](@ref).
 - `costs`: A vector of pairs
 """
-function build_quadratic_cost_matrix(matrices::NamedTuple, ssys::ODESystem, costs::AbstractVector{<:Pair})
+function build_quadratic_cost_matrix(matrices::NamedTuple, ssys::System, costs::AbstractVector{<:Pair})
     x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
     # y = getproperty.(ModelingToolkit.observed(ssys), :lhs)
@@ -397,7 +397,7 @@ The second problem above, the ordering of the states, can be worked around using
 - `inputs`: A vector of variables that are to be considered controlled inputs for the LQR controller.
 - `costs`: A vector of pairs.
 """
-function build_quadratic_cost_matrix(sys::ODESystem, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
+function build_quadratic_cost_matrix(sys::System, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, first.(costs); kwargs...)
     x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
@@ -699,7 +699,7 @@ function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1]
          for i in 1:nx];
         collect(output.u .~ C * x .+ D * (input.u .- u0) .+ y0)
     ]
-    compose(ODESystem(eqs, t, name = name), [input, output, scheduling_input])
+    compose(System(eqs, t, name = name), [input, output, scheduling_input])
 end
 
 "LPVStateSpace is equivalent to GainScheduledStateSpace, see the docs for GainScheduledStateSpace."
