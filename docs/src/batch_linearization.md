@@ -25,7 +25,7 @@ eqs = [D(x) ~ v
        y.u ~ x]
 
 
-@named duffing = ODESystem(eqs, t, systems=[y, u])
+@named duffing = System(eqs, t, systems=[y, u])
 ```
 
 ## Batch linearization
@@ -111,13 +111,13 @@ plot(layout=2)
 
 # Simulate each individual controller
 for C in Cs
-    @named Ci = ODESystem(C)
+    @named Ci = System(C)
     eqs = [
         closed_loop_eqs
         connect(fb.output, Ci.input)
         connect(Ci.output, duffing.u)
     ]
-    @named closed_loop = ODESystem(eqs, t, systems=[duffing, Ci, fb, ref, F])
+    @named closed_loop = System(eqs, t, systems=[duffing, Ci, fb, ref, F])
     prob = ODEProblem(structural_simplify(closed_loop), [F.xd => 0], (0.0, 8.0))
     sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
     plot!(sol, idxs=[duffing.y.u, duffing.u.u], layout=2, lab="")
@@ -131,7 +131,7 @@ eqs = [
     connect(Cgs.output, duffing.u)
     connect(duffing.y, Cgs.scheduling_input) # Don't forget to connect the scheduling variable!
 ]
-@named closed_loop = ODESystem(eqs, t, systems=[duffing, Cgs, fb, ref, F])
+@named closed_loop = System(eqs, t, systems=[duffing, Cgs, fb, ref, F])
 prob = ODEProblem(structural_simplify(closed_loop), [F.xd => 0], (0.0, 8.0))
 sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8, initializealg=SciMLBase.NoInit())
 plot!(sol, idxs=[duffing.y.u, duffing.u.u], l=(2, :red), lab="Gain scheduled")

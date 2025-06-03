@@ -3,7 +3,7 @@ using RobustAndOptimalControl: NamedStateSpace
 #=
 Ideas: All connections handled by ModelingToolkit.
 Names: 
-- handled either by named system, or directly in constructor to ODESystem. 
+- handled either by named system, or directly in constructor to System. 
 Functions: 
 - Give me linear system from [u1, u3] to [qm, a]
 If the linearization of a full system produces a named system, one could implement getindex for vectors of names and obtain the desired transfer functions.
@@ -20,7 +20,7 @@ using ModelingToolkit, ControlSystemsBase
 using ControlSystemsBase: ssdata, AbstractStateSpace, Continuous, nstates, noutputs, ninputs
 # using ControlSystemIdentification
 using RobustAndOptimalControl, MonteCarloMeasurements
-import ModelingToolkit: ODESystem, FnType, Symbolics
+import ModelingToolkit: System, FnType, Symbolics
 using ModelingToolkit: unknowns, observed, isdifferential
 using Symbolics
 using Symbolics: jacobian, solve_for
@@ -29,7 +29,7 @@ using UnPack
 
 # using SymbolicControlSystems
 
-export feedback, ODESystem, unknowns, observed, named_ss
+export feedback, System, unknowns, observed, named_ss
 export batch_ss, trajectory_ss, GainScheduledStateSpace
 export build_quadratic_cost_matrix
 
