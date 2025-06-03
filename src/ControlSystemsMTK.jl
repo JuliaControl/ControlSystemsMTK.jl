@@ -29,7 +29,7 @@ using UnPack
 
 # using SymbolicControlSystems
 
-export sconnect, feedback, ODESystem, unknowns, observed, named_ss
+export feedback, ODESystem, unknowns, observed, named_ss
 export batch_ss, trajectory_ss, GainScheduledStateSpace
 export build_quadratic_cost_matrix
 
