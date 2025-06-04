@@ -194,7 +194,8 @@ That's pretty cool, but even nicer is to generate some code for this symbolic sy
 ```@example LINEAIZE_SYMBOLIC
 defs = ModelingToolkit.defaults(simplified_sys)
 defs = merge(Dict(unknowns(model) .=> 0), defs)
-x, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs) # Extract the default state and parameter values
+x = ModelingToolkit.get_u0(simplified_sys, defs) # Extract the default state and parameter values
+pars = ModelingToolkit.get_p(simplified_sys, defs, split=false)
 
 fun = Symbolics.build_function(symbolic_sys, unknowns(simplified_sys), ModelingToolkit.parameters(simplified_sys);
     expression = Val{false}, # Generate a compiled function rather than a Julia expression

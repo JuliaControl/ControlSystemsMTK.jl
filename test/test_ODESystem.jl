@@ -214,7 +214,7 @@ sys = ss((mats...,)[1:4]...)
 
 defs = ModelingToolkit.defaults(ssys)
 defs = merge(Dict(unknowns(model) .=> 0), defs)
-_, p = ModelingToolkit.get_u0_p(ssys, defs, defs)
+p = ModelingToolkit.get_p(ssys, defs, split=false)
 
 
 sympars = ModelingToolkit.parameters(ssys)
