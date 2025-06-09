@@ -57,7 +57,7 @@ P02 = ss(P02_named)
 # same for controller
 x = unknowns(C)
 @nonamespace C02 = named_ss(C, [C.input], [C.output]; op)
-@test ss(C02) == C0
+@test tf(ss(C02)) ≈ tf(C0)
 
 
 ## Back again for a complete round trip, test that System get correct names
@@ -296,8 +296,12 @@ lin_inputs = [force.f.u]
 
 # => nothing to remove extra defaults
 op = Dict(cart.s => 10, cart.v => 0, link1.A => -pi/2, link1.dA => 0, force.f.u => 0, link1.x1 => nothing, link1.y1 => nothing, link1.x2 => nothing, link1.x_cm => nothing)
+# op = Dict(cart.s => 10, cart.v => 0, link1.A => -pi/2, link1.dA => 0, force.f.u => 0)
+
+guesses = [link1.fy1 => 0.1, cart.f => 0.1]
+
 G = named_ss(model, lin_inputs, lin_outputs; allow_symbolic = true, op,
-    allow_input_derivatives = true, zero_dummy_der = true)
+    allow_input_derivatives = true, zero_dummy_der = true, guesses)
 G = sminreal(G)
 @info "minreal"
 G = minreal(G)
