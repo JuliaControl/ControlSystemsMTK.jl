@@ -56,7 +56,7 @@ P = RobustAndOptimalControl.ss2particles(Ps) # convert to a single StateSpace sy
 
 notice how some coefficients are plotted like uncertain numbers `-13.8 ± 4.3`. We can plot such models as well:
 ```@example BATCHLIN
-bodeplot(P, w, legend=:bottomright) # Should look similar to the one above
+bodeplot(P, w, legend=:bottomright, adaptive=false) # Should look similar to the one above
 ```
 
 ## Controller tuning
@@ -154,7 +154,7 @@ The generated code starts by defining the interpolation vector `xs`, this variab
 We can linearize around a trajectory obtained from `solve` using the function [`trajectory_ss`](@ref). We provide it with a vector of time points along the trajectory at which to linearize, and in this case we specify the inputs and outputs to linearize between as analysis points `r` and `y`.
 ```@example BATCHLIN
 timepoints = 0:0.01:8
-Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=timepoints, initialize=true, verbose=true)
+Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=timepoints, verbose=true)
 bodeplot(Ps2, w, legend=false)
 ```
 

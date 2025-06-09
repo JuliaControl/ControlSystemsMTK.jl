@@ -425,16 +425,18 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
-
     # NOTE: we call linearization_funciton twice :( The first call is to get x=unknowns(ssys), the second call provides the operating points.
     # lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined = false, kwargs...)
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined = false, kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_empty_op = false, warn_initialize_determined = false, kwargs...)
 
     x = unknowns(ssys)
+    op_nothing = Dict(unknowns(sys) .=> nothing) # Remove all defaults present in the original system
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
-        Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
+        opsol = Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
+        merge(op_nothing, opsol)
     end
+    # @show ops[1]
     if fuzzer !== nothing
         opsv = map(ops) do op
             fuzzer(op)
@@ -442,7 +444,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         ops = reduce(vcat, opsv)
         t = repeat(t, inner = length(ops) ÷ length(t))
     end
-    # lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], initialize, kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...) # initializealg=ModelingToolkit.SciMLBase.NoInit()
     lins = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
         # linearize(sys, inputs, outputs; op, t, allow_input_derivatives, initialize=false)[1]
@@ -584,10 +586,10 @@ function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1]
         description = "Scheduling variable of gain-scheduled statespace system $name",
     ]
     
-    @variables A(v)[1:nx, 1:nx] = systems[1].A
-    @variables B(v)[1:nx, 1:nu] = systems[1].B
-    @variables C(v)[1:ny, 1:nx] = systems[1].C
-    @variables D(v)[1:ny, 1:nu] = systems[1].D
+    @variables A(t)[1:nx, 1:nx] = systems[1].A
+    @variables B(t)[1:nx, 1:nu] = systems[1].B
+    @variables C(t)[1:ny, 1:nx] = systems[1].C
+    @variables D(t)[1:ny, 1:nu] = systems[1].D
     A,B,C,D = collect.((A,B,C,D))
 
     eqs = [
