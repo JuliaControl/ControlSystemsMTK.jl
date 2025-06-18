@@ -303,6 +303,7 @@ guesses = [link1.fy1 => 0.1, cart.f => 0.1]
 G = named_ss(model, lin_inputs, lin_outputs; allow_symbolic = true, op,
     allow_input_derivatives = true, zero_dummy_der = true, guesses)
 G = sminreal(G)
+@test 10 ∈ RobustAndOptimalControl.operating_point(G).x
 @info "minreal"
 G = minreal(G)
 @info "poles"
@@ -311,8 +312,8 @@ ps = poles(G)
 @test minimum(abs, ps) < 1e-6
 @test minimum(abs, complex(0, 1.3777260367206716) .- ps) < 1e-10
 
-lsys, syss = linearize(model, lin_inputs, lin_outputs, op = op,
-    allow_input_derivatives = true)
+lsys, syss = linearize(model, lin_inputs, lin_outputs; op = op,
+    allow_input_derivatives = true, guesses)
 lsyss, sysss = ModelingToolkit.linearize_symbolic(model, lin_inputs, lin_outputs;
     allow_input_derivatives = true)
 

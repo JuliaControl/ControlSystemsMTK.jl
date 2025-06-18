@@ -104,7 +104,7 @@ function RobustAndOptimalControl.named_ss(
             out
         end
     end
-    matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
+    matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
     symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
@@ -115,12 +115,19 @@ function RobustAndOptimalControl.named_ss(
     else
         lsys = ss(matrices...)
     end
+    pind = [ModelingToolkit.parameter_index(ssys, i) for i in ModelingToolkit.inputs(ssys)]
+    x0 = xpt.x
+    u0 = [xpt.p[pi] for pi in pind] 
+    xu = (; x = x0, u = u0)
+    extra = Dict(:operating_point => xu)
+
     named_ss(
         lsys;
         x = symstr.(unknowns(ssys)),
         u = unames,
         y = symstr.(outputs),
         name = string(Base.nameof(sys)),
+        extra,
     )
 end
 
@@ -300,7 +307,7 @@ The second problem above, the ordering of the states, can be worked around using
 - `costs`: A vector of pairs.
 """
 function build_quadratic_cost_matrix(sys::System, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
-    matrices, ssys = ModelingToolkit.linearize(sys, inputs, first.(costs); kwargs...)
+    matrices, ssys, extras = ModelingToolkit.linearize(sys, inputs, first.(costs); kwargs...)
     x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
     nx = length(x)
@@ -323,10 +330,12 @@ function batch_linearize(sys, inputs, outputs, ops::AbstractVector{<:AbstractDic
         allow_input_derivatives = false,
         kwargs...)
     lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...)
-    lins = map(ops) do op
+    lins_ops = map(ops) do op
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
     end
-    lins, ssys
+    lins = first.(lins_ops)
+    resolved_ops = last.(lins_ops)
+    lins, ssys, resolved_ops
 end
 
 """
@@ -404,8 +413,8 @@ nyquistcircles!(w, centers, radii, ylims = (-4, 1), xlims = (-3, 4))
 See also [`trajectory_ss`](@ref) and [`fuzz`](@ref).
 """
 function batch_ss(args...; kwargs...)
-    lins, ssys = batch_linearize(args...; kwargs...)
-    [ss(l...) for l in lins], ssys
+    lins, ssys, resolved_ops = batch_linearize(args...; kwargs...)
+    [ss(l...) for l in lins], ssys, resolved_ops
 end
 
 """
@@ -422,18 +431,22 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `verbose`: If `true`, print warnings for variables that are not found in `sol`.
 - `kwargs`: Are sent to the linearization functions.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true,kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
     # NOTE: we call linearization_funciton twice :( The first call is to get x=unknowns(ssys), the second call provides the operating points.
     # lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined = false, kwargs...)
     lin_fun, ssys = linearization_function(sys, inputs, outputs; warn_empty_op = false, warn_initialize_determined = false, kwargs...)
-
     x = unknowns(ssys)
+
+    # TODO: The value of the output (or input) of the input analysis points should be mapped to the perturbation vars
+    @show perturbation_vars = ModelingToolkit.inputs(ssys)
+    # original_inputs = [ap.input.u for ap in vcat(inputs)] # assuming all inputs are analysis points for now
     op_nothing = Dict(unknowns(sys) .=> nothing) # Remove all defaults present in the original system
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
         opsol = Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
+        # opsolu = Dict(new_u => robust_sol_getindex(sol, ti, u, defs; verbose) for (new_u, u) in zip(perturbation_vars, original_inputs))
         merge(op_nothing, opsol)
     end
     # @show ops[1]
@@ -445,11 +458,13 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         t = repeat(t, inner = length(ops) ÷ length(t))
     end
     lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...) # initializealg=ModelingToolkit.SciMLBase.NoInit()
-    lins = map(zip(ops, t)) do (op, t)
+    lins_ops = map(zip(ops, t)) do (op, t)
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
         # linearize(sys, inputs, outputs; op, t, allow_input_derivatives, initialize=false)[1]
     end
-    (; linsystems = [ss(l...) for l in lins], ssys, ops)
+    lins = first.(lins_ops)
+    resolved_ops = last.(lins_ops)
+    (; linsystems = [ss(l...) for l in lins], ssys, ops, resolved_ops)
 end
 
 "_max_100(t) = length(t) > 100 ? range(extrema(t)..., 100) : t"
