@@ -50,15 +50,15 @@ With state  names: x1 x2 x3 x4
      input  names: torque
      output names: motor_angle load_angle
 </code></pre><p>When we convert this system to an ODESystem, we get a system with connectors <code>P.torque</code> and <code>P.motor_angle</code>, in addition to the standard connectors <code>P.input</code> and <code>P.output</code>:</p><pre><code class="language-julia hljs">@named P_ode = ODESystem(P)</code></pre><p class="math-container">\[ \begin{align}
-\frac{\mathrm{d} x\left( t \right)_{1}}{\mathrm{d}t} &amp;= x\left( t \right)_{2} \\
-\frac{\mathrm{d} x\left( t \right)_{2}}{\mathrm{d}t} &amp;=  - 100 x\left( t \right)_{1} - 2 x\left( t \right)_{2} + 100 x\left( t \right)_{3} + x\left( t \right)_{4} + \mathtt{input.u}\left( t \right) \\
-\frac{\mathrm{d} x\left( t \right)_{3}}{\mathrm{d}t} &amp;= x\left( t \right)_{4} \\
-\frac{\mathrm{d} x\left( t \right)_{4}}{\mathrm{d}t} &amp;= 100 x\left( t \right)_{1} + x\left( t \right)_{2} - 100 x\left( t \right)_{3} - 2 x\left( t \right)_{4} \\
-\mathtt{output.u}\left( t \right)_{1} &amp;= x\left( t \right)_{1} \\
-\mathtt{output.u}\left( t \right)_{2} &amp;= x\left( t \right)_{3} \\
+\frac{\mathrm{d} x\_{1}\left( t \right)}{\mathrm{d}t} &amp;= x\_{2}\left( t \right) \\
+\frac{\mathrm{d} x\_{2}\left( t \right)}{\mathrm{d}t} &amp;=  - 100 x\_{1}\left( t \right) - 2 x\_{2}\left( t \right) + 100 x\_{3}\left( t \right) + x\_{4}\left( t \right) + \mathtt{input.u}\left( t \right) \\
+\frac{\mathrm{d} x\_{3}\left( t \right)}{\mathrm{d}t} &amp;= x\_{4}\left( t \right) \\
+\frac{\mathrm{d} x\_{4}\left( t \right)}{\mathrm{d}t} &amp;= 100 x\_{1}\left( t \right) + x\_{2}\left( t \right) - 100 x\_{3}\left( t \right) - 2 x\_{4}\left( t \right) \\
+\mathtt{output.u}\_{1}\left( t \right) &amp;= x\_{1}\left( t \right) \\
+\mathtt{output.u}\_{2}\left( t \right) &amp;= x\_{3}\left( t \right) \\
 \mathtt{torque.u}\left( t \right) &amp;= \mathtt{input.u}\left( t \right) \\
-\mathtt{motor\_angle.u}\left( t \right) &amp;= \mathtt{output.u}\left( t \right)_{1} \\
-\mathtt{load\_angle.u}\left( t \right) &amp;= \mathtt{output.u}\left( t \right)_{2}
+\mathtt{motor\_angle.u}\left( t \right) &amp;= \mathtt{output.u}\_{1}\left( t \right) \\
+\mathtt{load\_angle.u}\left( t \right) &amp;= \mathtt{output.u}\_{2}\left( t \right)
 \end{align}
  \]</p><p>Here, <code>P.torque</code> is equal to <code>P.input</code>, so you may choose to connect to either of them. However, since the output is multivariable, the connector <code>P.output</code> represents both outputs, while <code>P.motor_angle</code> and <code>P.load_angle</code> represent the individual scalar outputs.</p><h2 id="From-ModelingToolkit-to-ControlSystems"><a class="docs-heading-anchor" href="#From-ModelingToolkit-to-ControlSystems">From ModelingToolkit to ControlSystems</a><a id="From-ModelingToolkit-to-ControlSystems-1"></a><a class="docs-heading-anchor-permalink" href="#From-ModelingToolkit-to-ControlSystems" title="Permalink"></a></h2><p>An <code>ODESystem</code> can be converted to a named statespace object from <a href="https://github.com/JuliaControl/RobustAndOptimalControl.jl">RobustAndOptimalControl.jl</a> by calling <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a></p><pre><code class="language-julia hljs">named_ss(ode_sys, inputs, outputs; op)</code></pre><p>this performs a linearization of <code>ode_sys</code> around the operating point <code>op</code> (defaults to the default values of all variables in <code>ode_sys</code>).</p><h3 id="Example:-2"><a class="docs-heading-anchor" href="#Example:-2">Example:</a><a class="docs-heading-anchor-permalink" href="#Example:-2" title="Permalink"></a></h3><p>Using <code>P</code> from above:</p><pre><code class="language-julia hljs">julia&gt; @unpack input, output = P;
 
@@ -171,17 +171,17 @@ A =
 B = 
  0.0
  0.0
- 1.0
  0.0
+ 1.0
 C = 
- 1.0  0.0  0.0  0.0
  0.0  1.0  0.0  0.0
+ 1.0  0.0  0.0  0.0
 D = 
  0.0
  0.0
 
 Continuous-time state-space model
-With state  names: inertia1₊phi(t) inertia2₊phi(t) inertia1₊w(t) inertia2₊w(t)
+With state  names: inertia2₊phi(t) inertia1₊phi(t) inertia2₊w(t) inertia1₊w(t)
      input  names: torque₊tau₊u(t)
      output names: inertia1₊phi(t) inertia2₊phi(t)
 </code></pre><h3 id="Symbolic-linearization"><a class="docs-heading-anchor" href="#Symbolic-linearization">Symbolic linearization</a><a id="Symbolic-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Symbolic-linearization" title="Permalink"></a></h3><p>If we instead call <code>linearize_symbolic</code> and pass the jacobians into <code>ss</code>, we get a <code>StateSpace{Continuous, Num}</code></p><pre><code class="language-julia hljs">mats, simplified_sys = ModelingToolkit.linearize_symbolic(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
@@ -189,16 +189,16 @@ symbolic_sys = ss(mats.A, mats.B, mats.C, mats.D)</code></pre><pre class="docume
 A = 
                         0                         0                         1                         0
                         0                         0                         0                         1
- (-spring₊c) / inertia1₊J     spring₊c / inertia1₊J  (-damper₊d) / inertia1₊J     damper₊d / inertia1₊J
-    spring₊c / inertia2₊J  (-spring₊c) / inertia2₊J     damper₊d / inertia2₊J  (-damper₊d) / inertia2₊J
+ (-spring₊c) / inertia2₊J     spring₊c / inertia2₊J  (-damper₊d) / inertia2₊J     damper₊d / inertia2₊J
+    spring₊c / inertia1₊J  (-spring₊c) / inertia1₊J     damper₊d / inertia1₊J  (-damper₊d) / inertia1₊J
 B = 
               0
               0
- 1 / inertia1₊J
               0
+ 1 / inertia1₊J
 C = 
- 1  0  0  0
  0  1  0  0
+ 1  0  0  0
 D = 
  0
  0
@@ -221,11 +221,11 @@ A =
 B = 
  0.0
  0.0
- 1.0
  0.0
+ 1.0
 C = 
- 1  0  0  0
  0  1  0  0
+ 1  0  0  0
 D = 
  0
  0
@@ -313,4 +313,4 @@ s \begin{bmatrix}I &amp; -\bar B \\ 0 &amp; 0 \end{bmatrix} &amp;=
 \begin{bmatrix}X \\ X_u \end{bmatrix} + 
 \begin{bmatrix} B \\ I_u\end{bmatrix} U \\
 sE &amp;= A_e x_e + B_e u
-\end{aligned}\]</p><p>where <span>$X_u$</span> is a new algebraic state variable and <span>$I_u$</span> is a selector matrix that picks out the differentiated inputs appearing in <span>$\dot u$</span> (if all inputs appear, <span>$I_u = I$</span>).</p><p>This model may be converted to a proper statespace model (if the system is indeed proper) using <code>DescriptorSystems.dss2ss</code>. All of this is handled automatically by <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a>.</p><p><strong>Summary</strong>: If you get the error message</p><blockquote><p>Input derivatives appeared in expressions (-g<em>z\g</em>u != 0)</p></blockquote><p>Switch from calling <code>linearize</code> to calling <code>named_ss</code> with exactly the same input arguments, and then pass the argument <code>allow_input_derivatives = true</code> to <code>named_ss</code>.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="batch_linearization/">Batch linearization and gain scheduling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 25 February 2025 15:43">Tuesday 25 February 2025</span>. Using Julia version 1.11.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+\end{aligned}\]</p><p>where <span>$X_u$</span> is a new algebraic state variable and <span>$I_u$</span> is a selector matrix that picks out the differentiated inputs appearing in <span>$\dot u$</span> (if all inputs appear, <span>$I_u = I$</span>).</p><p>This model may be converted to a proper statespace model (if the system is indeed proper) using <code>DescriptorSystems.dss2ss</code>. All of this is handled automatically by <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a>.</p><p><strong>Summary</strong>: If you get the error message</p><blockquote><p>Input derivatives appeared in expressions (-g<em>z\g</em>u != 0)</p></blockquote><p>Switch from calling <code>linearize</code> to calling <code>named_ss</code> with exactly the same input arguments, and then pass the argument <code>allow_input_derivatives = true</code> to <code>named_ss</code>.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="batch_linearization/">Batch linearization and gain scheduling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.12.0 on <span class="colophon-date" title="Thursday 19 June 2025 11:55">Thursday 19 June 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
