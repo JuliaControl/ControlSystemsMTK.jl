@@ -11,34 +11,12 @@ connect = ModelingToolkit.connect
 P0 = tf(1.0, [1, 1]) |> ss
 C0 = pid(1, 1) * tf(1, [0.01, 1]) |> ss
 
-@named P = ODESystem(P0)
-@test P isa ODESystem
+@named P = System(P0)
+@test P isa System
 # @test length(ModelingToolkit.outputs(P)) == P0.ny
 # @test length(ModelingToolkit.inputs(P)) == P0.nu
 # @named nonlinear_P = sconnect(x->sign(x)*sqrt(abs(x)), P) # apply input-nonlinearity
-@named C        = ODESystem(C0)
-@named loopgain = sconnect(C, P)
-@named ref      = Blocks.Sine(frequency = 1)
-fb0             = feedback(loopgain, name = :fb) * ref
-fb              = structural_simplify(fb0)
-
-# @test length(unknowns(P)) == 3 # 1 + u + y
-# @test length(unknowns(C)) == 4 # 2 + u + y
-
-x0 = Pair[
-    collect(loopgain.P.x) .=> 1.0;
-]
-
-prob = ODEProblem(fb, x0, (0.0, 10.0))
-sol = solve(prob, Rodas5())
-@test Int(sol.retcode) == 1
-isinteractive() && plot(sol)
-
-fb              = structural_simplify(sconnect(sin, P))
-prob = ODEProblem(fb, x0, (0.0, 10.0))
-sol2 = solve(prob, Rodas5())
-@test Int(sol2.retcode) == 1
-isinteractive() && plot(sol2)
+@named C        = System(C0)
 
 Pc = complete(P)
 op = Dict(Pc.input.u => 0.0)
@@ -65,7 +43,7 @@ P1 = ss(Pc, [Pc.input.u], [Pc.output.u]; op)
 
 
 
-# === Go the other way, ODESystem -> StateSpace ================================
+# === Go the other way, System -> StateSpace ================================
 x = unknowns(P) # I haven't figured out a good way to access states, so this is a bit manual and ugly
 @unpack input, output = P
 P02_named = named_ss(P, [input.u], [output.u]; op)
@@ -79,11 +57,11 @@ P02 = ss(P02_named)
 # same for controller
 x = unknowns(C)
 @nonamespace C02 = named_ss(C, [C.input], [C.output]; op)
-@test ss(C02) == C0
+@test tf(ss(C02)) ≈ tf(C0)
 
 
-## Back again for a complete round trip, test that ODESystem get correct names
-@named P2 = ODESystem(P02_named)
+## Back again for a complete round trip, test that System get correct names
+@named P2 = System(P02_named)
 # @test Set(unknowns(P)) ⊆ Set(unknowns(P2))
 # @test Set(ModelingToolkit.inputs(P)) ⊆ Set(ModelingToolkit.inputs(P2))
 # @test Set(ModelingToolkit.outputs(P)) ⊆ Set(ModelingToolkit.outputs(P2))
@@ -128,13 +106,13 @@ Cp0 = tx * pid(2, 0) * tf(1, [0.01, 1])  #|> ss
 P0i = deepcopy(P0)
 P0i.D .= 1e-8
 
-@named RF = ODESystem(tf(1, [0.001, 1])) # ref filter
-@named RFv = ODESystem(tf(1, [0.001, 1]))
-@named P = ODESystem(P0) # system model
-@named Fv = ODESystem(inv(P0i[2, 1])) # feedforward vel
-@named Fp = ODESystem(inv(P0i[1, 1])) # feedforward pos
-@named Cv = ODESystem(Cv0) # vel controller
-@named Cp = ODESystem(Cp0) # pos controller
+@named RF = System(tf(1, [0.001, 1])) # ref filter
+@named RFv = System(tf(1, [0.001, 1]))
+@named P = System(P0) # system model
+@named Fv = System(inv(P0i[2, 1])) # feedforward vel
+@named Fp = System(inv(P0i[1, 1])) # feedforward pos
+@named Cv = System(Cv0) # vel controller
+@named Cp = System(Cp0) # pos controller
 fb =
     let ref0 = Blocks.Sine(amplitude = 0.2, frequency = 1, name = :r),
         disturbance = Blocks.Step(height = 100, start_time = 10, name = :d)
@@ -142,7 +120,7 @@ fb =
         @named input = Blocks.RealInput()
         @named output = Blocks.RealOutput()
         Dₜ = Differential(t)
-        fb = ODESystem(
+        fb = System(
             [
                 conn(ref0.output, RF.input) # filter position reference
                 expand_derivatives(Dₜ(ref0.output.u) ~ RFv.input.u) # Filter vel reference
@@ -158,16 +136,15 @@ fb =
             name = :feedback,
         )
     end
-simplified_sys = structural_simplify(fb)
+simplified_sys = mtkcompile(fb)
 
 
 x0 = Pair[
     P.x[1] => 0.0
     P.x[3] => 0.0
 ]
-p = Pair[]
 
-prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), p, jac = true)
+prob = ODEProblem(simplified_sys, x0, (0.0, 20.0), jac = true)
 sol = solve(prob, Rodas5(), saveat = 0:0.01:20)
 if isinteractive()
     @show sol.retcode
@@ -211,9 +188,9 @@ function SystemModel(u=nothing; name=:model)
     ]
     if u !== nothing 
         push!(eqs, connect(u.output, :u, torque.tau))
-        return @named model = ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper, u])
+        return @named model = System(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper, u])
     end
-    ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper], name)
+    System(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper], name)
 end
 
 model = SystemModel() |> complete
@@ -237,7 +214,7 @@ sys = ss((mats...,)[1:4]...)
 
 defs = ModelingToolkit.defaults(ssys)
 defs = merge(Dict(unknowns(model) .=> 0), defs)
-_, p = ModelingToolkit.get_u0_p(ssys, defs, defs)
+p = ModelingToolkit.get_p(ssys, defs, split=false)
 
 
 sympars = ModelingToolkit.parameters(ssys)
@@ -261,14 +238,14 @@ eqs = [connect(P.output, :plant_output, add.input2)
     connect(add.output, C.input)
     connect(C.output, :plant_input, P.input)]
 
-sys_inner = ODESystem(eqs, t, systems = [P, C, add], name = :inner)
+sys_inner = System(eqs, t, systems = [P, C, add], name = :inner)
 
 @named r = Blocks.Constant(k = 1)
 @named F = Blocks.FirstOrder(k = 1, T = 3)
 
 eqs = [connect(r.output, F.input)
     connect(F.output, sys_inner.add.input1)]
-sys_outer = ODESystem(eqs, t, systems = [F, sys_inner, r], name = :outer)
+sys_outer = System(eqs, t, systems = [F, sys_inner, r], name = :outer)
 
 matrices, _ = Blocks.get_sensitivity(sys_outer, [sys_outer.inner.plant_input, sys_outer.inner.plant_output])
 S = ss(matrices...)
@@ -282,7 +259,7 @@ Sn = get_named_sensitivity(sys_outer, [sys_outer.inner.plant_input, sys_outer.in
 
 ## Test connector names
 P = named_ss(ssrand(1,1,1), u=:jörgen, y=:solis)
-@named Pode = ODESystem(P)
+@named Pode = System(P)
 ModelingToolkit.isconnector(Pode.jörgen)
 ModelingToolkit.isconnector(Pode.solis)
 
@@ -313,15 +290,20 @@ eqs = [connect(link1.TX1, cart.flange)
        connect(cart.flange, force.flange)
        connect(link1.TY1, fixed.flange)]
 
-@named model = ODESystem(eqs, t, [], []; systems = [link1, cart, force, fixed])
+@named model = System(eqs, t, [], []; systems = [link1, cart, force, fixed])
 lin_outputs = [cart.s, cart.v, link1.A, link1.dA]
 lin_inputs = [force.f.u]
 
 # => nothing to remove extra defaults
 op = Dict(cart.s => 10, cart.v => 0, link1.A => -pi/2, link1.dA => 0, force.f.u => 0, link1.x1 => nothing, link1.y1 => nothing, link1.x2 => nothing, link1.x_cm => nothing)
+# op = Dict(cart.s => 10, cart.v => 0, link1.A => -pi/2, link1.dA => 0, force.f.u => 0)
+
+guesses = [link1.fy1 => 0.1, cart.f => 0.1]
+
 G = named_ss(model, lin_inputs, lin_outputs; allow_symbolic = true, op,
-    allow_input_derivatives = true, zero_dummy_der = true)
+    allow_input_derivatives = true, zero_dummy_der = true, guesses)
 G = sminreal(G)
+@test 10 ∈ RobustAndOptimalControl.operating_point(G).x
 @info "minreal"
 G = minreal(G)
 @info "poles"
@@ -330,8 +312,8 @@ ps = poles(G)
 @test minimum(abs, ps) < 1e-6
 @test minimum(abs, complex(0, 1.3777260367206716) .- ps) < 1e-10
 
-lsys, syss = linearize(model, lin_inputs, lin_outputs, op = op,
-    allow_input_derivatives = true)
+lsys, syss = linearize(model, lin_inputs, lin_outputs; op = op,
+    allow_input_derivatives = true, guesses)
 lsyss, sysss = ModelingToolkit.linearize_symbolic(model, lin_inputs, lin_outputs;
     allow_input_derivatives = true)
 

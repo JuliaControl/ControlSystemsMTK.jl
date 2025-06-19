@@ -2,8 +2,8 @@ using ControlSystemsMTK
 using Test
 
 @testset "ControlSystemsMTK.jl" begin
-    @testset "ODESystem" begin
-        @info "Testing ODESystem"        
+    @testset "System" begin
+        @info "Testing System"        
         include("test_ODESystem.jl")
     end
 
