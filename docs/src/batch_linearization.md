@@ -175,7 +175,7 @@ We will explore these options below, starting with the first option, breaking th
 ```@example BATCHLIN
 kwargs = (; adaptive=false, legend=false)
 plants, _ = trajectory_ss(closed_loop, closed_loop.u, closed_loop.y, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.u]);
-controllersy, ssy = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.y]);
+controllersy, ssy, ops3, resolved_ops3 = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.y]);
 
 closed_loopsy = feedback.(plants .* controllersy)
 bodeplot(closed_loopsy, w; title="Loop open at y", kwargs...)

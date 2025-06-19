@@ -197,12 +197,13 @@ function named_sensitivity_function(
     fun,
     sys::ModelingToolkit.AbstractSystem,
     inputs, args...;
+    descriptor = true,
     kwargs...,
 )
 
     inputs = vcat(inputs)
     inputs = map(inputs) do inp
-        if inp isa System
+    if inp isa System
             @variables u(t)
             if u ∈ Set(unknowns(inp))
                 inp.u
@@ -219,23 +220,10 @@ function named_sensitivity_function(
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
-        nx = size(matrices.A, 1)
-         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end])))
-        B̄ = matrices.B[:, duinds .+ nu]
-        ndu = length(duinds)
-        B = matrices.B[:, 1:nu]
-        Iu = duinds .== (1:nu)'
-        E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
-
-        Ae = cat(matrices.A, -I(ndu), dims=(1,2))
-        Be = [B; Iu]
-        Ce = [fm(matrices.C) zeros(ny, ndu)]
-        De = fm(matrices.D[:, 1:nu])
-        dsys = dss(Ae, E, Be, Ce, De)
-        lsys = ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
-        # unames = [unames; Symbol.("der_" .* string.(unames))]
-        # sys = ss(matrices...)
+        # This indicates that input derivatives are present
+        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
+        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        lsys = causal_simplification(matrices, u2du; descriptor)
     else
         lsys = ss(matrices...)
     end
