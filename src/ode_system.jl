@@ -215,7 +215,7 @@ function RobustAndOptimalControl.named_ss(
         lsys = ss(matrices...)
     end
     # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
-    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [string(nameof(sys))*"_x$i" for i in 1:lsys.nx]
+    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [Symbol(string(nameof(sys))*"_x$i") for i in 1:lsys.nx]
     named_ss(
         lsys;
         x = x_names,
@@ -325,7 +325,7 @@ function named_sensitivity_function(
     else
         lsys = ss(matrices...)
     end
-    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [string(nameof(sys))*"_x$i" for i in 1:lsys.nx]
+    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [Symbol(string(nameof(sys))*"_x$i") for i in 1:lsys.nx]
     named_ss(
         lsys;
         x = x_names,
