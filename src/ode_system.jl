@@ -154,7 +154,7 @@ end
 
 
 """
-    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractTimeDependentSystem, inputs, outputs; descriptor=true, kwargs...)
+    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, simple_infeigs=true, kwargs...)
 
 Convert an `ODESystem` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`.
 
@@ -170,6 +170,7 @@ function RobustAndOptimalControl.named_ss(
     inputs,
     outputs;
     descriptor = true,
+    simple_infeigs = true,
     kwargs...,
 )
 
@@ -209,20 +210,25 @@ function RobustAndOptimalControl.named_ss(
         # This indicates that input derivatives are present
         duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
         u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
-        lsys = causal_simplification(matrices, u2du; descriptor)
+        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs)
     else
         lsys = ss(matrices...)
     end
+    # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
+    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [string(nameof(sys))*"_x$i" for i in 1:lsys.nx]
     named_ss(
         lsys;
-        x = symstr.(unknowns(ssys)),
+        x = x_names,
         u = unames,
         y = symstr.(outputs),
         name = string(Base.nameof(sys)),
     )
 end
 
-function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true)
+"""
+    causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs = true)
+"""
+function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs = true)
     fm(x) = convert(Matrix{Float64}, x)
     nx = size(sys.A, 1)
     ny = size(sys.C, 1)
@@ -245,7 +251,7 @@ function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor
         Ce = [fm(sys.C) zeros(ny, ndu)]
         De = fm(D)
         dsys = dss(Ae, E, Be, Ce, De)
-        return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
+        return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys; simple_infeigs)[1])
     else
         ss(sys.A, B, sys.C, D) + ss(sys.A, B̄, sys.C, D̄)*tf('s')
     end
@@ -288,6 +294,8 @@ function named_sensitivity_function(
     fun,
     sys::ModelingToolkit.AbstractTimeDependentSystem,
     inputs, args...;
+    descriptor = true,
+    simple_infeigs = true,
     kwargs...,
 )
 
@@ -310,29 +318,17 @@ function named_sensitivity_function(
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
-        nx = size(matrices.A, 1)
-         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end])))
-        B̄ = matrices.B[:, duinds .+ nu]
-        ndu = length(duinds)
-        B = matrices.B[:, 1:nu]
-        Iu = duinds .== (1:nu)'
-        E = [I(nx) -B̄; zeros(ndu, nx+ndu)]
-
-        Ae = cat(matrices.A, -I(ndu), dims=(1,2))
-        Be = [B; Iu]
-        Ce = [fm(matrices.C) zeros(ny, ndu)]
-        De = fm(matrices.D[:, 1:nu])
-        dsys = dss(Ae, E, Be, Ce, De)
-        lsys = ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
-        # unames = [unames; Symbol.("der_" .* string.(unames))]
-        # sys = ss(matrices...)
+        # This indicates that input derivatives are present
+        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
+        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs)
     else
         lsys = ss(matrices...)
     end
+    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [string(nameof(sys))*"_x$i" for i in 1:lsys.nx]
     named_ss(
         lsys;
-        x = symstr.(unknowns(ssys)),
+        x = x_names,
         u = unames,
         y = unames, #Symbol.("out_" .* string.(inputs)),
         name = string(Base.nameof(sys)),
