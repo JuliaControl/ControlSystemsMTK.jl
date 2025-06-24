@@ -382,7 +382,17 @@ w = exp10.(LinRange(-12, 2, 2000))
 # ControlSystemsBase.bodeplot([G, G2, minreal(G, 1e-8)], w)
 
 
-##
+## artificial fully dense test
 
-# S = schur(A,B)
-# V = eigvecs(S)
+lsys = ssrand(2,2,3,proper=true)
+G = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=false)
+G2 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=true)
+G3 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=false, big=true)
+G4 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=true, simple_infeigs=false, balance=true)
+
+w_test = [1e-5, 1, 100]
+@test freqresp(G, w_test) ≈ freqresp(G2, w_test)
+@test freqresp(G, w_test) ≈ freqresp(G3, w_test)
+@test freqresp(G, w_test) ≈ freqresp(G4, w_test)
+
+# bodeplot([G, G2, G3, G4], exp10.(LinRange(-2, 2, 200)))
