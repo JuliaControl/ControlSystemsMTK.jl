@@ -405,6 +405,17 @@ function batch_ss(args...; kwargs...)
     [ss(l...) for l in lins], ssys, resolved_ops
 end
 
+function unnamespace(ap)
+    # ap_name = ap.name
+    # new_name = join(ModelingToolkit.namespace_hierarchy(ap_name)[2:end], Symbolics.NAMESPACE_SEPARATOR)
+    # ap2 = ModelingToolkit.@set ap.name = Symbol(new_name)
+    # ap2
+
+    ap_name = ModelingToolkit.SymbolicIndexingInterface.getname(ap.input.u)
+    new_name = join(ModelingToolkit.namespace_hierarchy(ap_name)[2:end], Symbolics.NAMESPACE_SEPARATOR)
+    new_var = Symbolics.rename(ap.input.u, Symbol(new_name))
+end
+
 """
     linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), fuzzer=nothing, verbose = true, kwargs...)
 
@@ -429,7 +440,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
 
     # TODO: The value of the output (or input) of the input analysis points should be mapped to the perturbation vars
     perturbation_vars = ModelingToolkit.inputs(ssys)
-    original_inputs = [ap.input.u for ap in vcat(inputs)] # assuming all inputs are analysis points for now
+    original_inputs = [unnamespace(ap) for ap in vcat(inputs)] # assuming all inputs are analysis points for now
     op_nothing = Dict(unknowns(sys) .=> nothing) # Remove all defaults present in the original system
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
@@ -437,7 +448,6 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         # opsolu = Dict(new_u => robust_sol_getindex(sol, ti, u, defs; verbose) for (new_u, u) in zip(perturbation_vars, original_inputs))
         merge(op_nothing, opsol)
     end
-    # @show ops[1]
     if fuzzer !== nothing
         opsv = map(ops) do op
             fuzzer(op)
@@ -445,8 +455,9 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         ops = reduce(vcat, opsv)
         t = repeat(t, inner = length(ops) ÷ length(t))
     end
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...) # initializealg=ModelingToolkit.SciMLBase.NoInit()
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], initialization_abstol=1e-2, initialization_reltol=1e-2, kwargs...) # initializealg=ModelingToolkit.SciMLBase.NoInit()
     lins_ops = map(zip(ops, t)) do (op, t)
+        @show t
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
         # linearize(sys, inputs, outputs; op, t, allow_input_derivatives, initialize=false)[1]
     end
