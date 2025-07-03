@@ -419,7 +419,7 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `verbose`: If `true`, print warnings for variables that are not found in `sol`.
 - `kwargs`: Are sent to the linearization functions.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true,kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
     # NOTE: we call linearization_funciton twice :( The first call is to get x=unknowns(ssys), the second call provides the operating points.
@@ -428,12 +428,12 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     x = unknowns(ssys)
 
     # TODO: The value of the output (or input) of the input analysis points should be mapped to the perturbation vars
-    @show perturbation_vars = ModelingToolkit.inputs(ssys)
-    # original_inputs = [ap.input.u for ap in vcat(inputs)] # assuming all inputs are analysis points for now
+    perturbation_vars = ModelingToolkit.inputs(ssys)
+    original_inputs = [ap.input.u for ap in vcat(inputs)] # assuming all inputs are analysis points for now
     op_nothing = Dict(unknowns(sys) .=> nothing) # Remove all defaults present in the original system
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
-        opsol = Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
+        opsol = Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in [x; original_inputs])
         # opsolu = Dict(new_u => robust_sol_getindex(sol, ti, u, defs; verbose) for (new_u, u) in zip(perturbation_vars, original_inputs))
         merge(op_nothing, opsol)
     end
