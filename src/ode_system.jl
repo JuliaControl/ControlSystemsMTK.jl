@@ -439,8 +439,9 @@ Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `S
 - `fuzzer`: A function that takes an operating point dictionary and returns an array of "fuzzed" operating points. This is useful for adding noise/uncertainty to the operating points along the trajectory. See [`ControlSystemsMTK.fuzz`](@ref) for such a function.
 - `verbose`: If `true`, print warnings for variables that are not found in `sol`.
 - `kwargs`: Are sent to the linearization functions.
+- `named`: If `true`, the returned systems will be of type `NamedStateSpace`, otherwise they will be of type `StateSpace`.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, named = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
     # NOTE: we call linearization_funciton twice :( The first call is to get x=unknowns(ssys), the second call provides the operating points.
@@ -482,8 +483,15 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     lins = first.(lins_ops)
     resolved_ops = last.(lins_ops)
     named_linsystems = map(lins) do l
-        # Convert to a NamedStateSpace with the same names as the original system
-        named_ss(ss(l.A, l.B, l.C, l.D); name = string(Base.nameof(sys)), x = symstr.(unknowns(ssys)), u = symstr.(input_names), y = symstr.(output_names))
+        if named
+            # Convert to a NamedStateSpace with the same names as the original system
+            ynames = allunique(output_names) ? symstr.(output_names) : [Symbol(string(nameof(sys))*"_y$i") for i in 1:length(output_names)]
+            unames = allunique(input_names) ? symstr.(input_names) : [Symbol(string(nameof(sys))*"_u$i") for i in 1:length(input_names)]
+            nsys = named_ss(ss(l.A, l.B, l.C, l.D); name = string(Base.nameof(sys)), x = symstr.(unknowns(ssys)), u = unames, y = ynames)
+            # RobustAndOptimalControl.merge_nonunique_outputs(RobustAndOptimalControl.merge_nonunique_inputs(nsys))
+        else
+            ss(l.A, l.B, l.C, l.D)
+        end
     end
     (; linsystems = named_linsystems, ssys, ops, resolved_ops)
 end
