@@ -226,13 +226,11 @@ using Test
 
 However, if we only open at `y` we get controller linearizations that _still contain the closed loop through the scheduling connection_ `v`. We can verify this by looking at what variables are present in the input-output map
 ```@example BATCHLIN
-Cy = named_ss(controllersy[end], x=Symbol.(unknowns(ssy)))
-sminreal(Cy).x
+sminreal(controllersy[end]).x
 ```
 notice how the state of the plant is included in the controller, this is an indication that we didn't fully isolate the controller during the linearizaiton. If we do the same thing for the controller with the loop opened at `u`, we see that the state of the plant is not included in the controller:
 ```@example BATCHLIN
-Cu = named_ss(controllersu[end], x=Symbol.(unknowns(ssu)))
-sminreal(Cu).x
+sminreal(controllersu[end]).x
 ```
 The call to `sminreal` is important here, it removes the states that are not needed to represent the input-output map of the system. The state of the full model, including the plant state, is present in the linearization before this call. 
 

@@ -54,6 +54,8 @@ function ControlSystemsBase.ss(
     named_ss(sys, inputs, outputs; kwargs...).sys # just discard the names
 end
 
+symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
+
 
 """
     RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, kwargs...)
@@ -105,7 +107,6 @@ function RobustAndOptimalControl.named_ss(
         end
     end
     matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
-    symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
@@ -437,7 +438,11 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
 
     # TODO: The value of the output (or input) of the input analysis points should be mapped to the perturbation vars
     perturbation_vars = ModelingToolkit.inputs(ssys)
-    # @show original_inputs = reduce(vcat, unnamespace(ap) for ap in vcat(inputs)) # assuming all inputs are analysis points for now
+    # original_inputs = reduce(vcat, unnamespace(ap) for ap in vcat(inputs)) # assuming all inputs are analysis points for now
+
+    input_names = reduce(vcat, getproperty.(ap.outputs, :u) for ap in vcat(inputs)) 
+    output_names = reduce(vcat, ap.input.u for ap in vcat(outputs)) 
+
     op_nothing = Dict(unknowns(sys) .=> nothing) # Remove all defaults present in the original system
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
@@ -464,7 +469,11 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     end
     lins = first.(lins_ops)
     resolved_ops = last.(lins_ops)
-    (; linsystems = [ss(l...) for l in lins], ssys, ops, resolved_ops)
+    named_linsystems = map(lins) do l
+        # Convert to a NamedStateSpace with the same names as the original system
+        named_ss(ss(l.A, l.B, l.C, l.D); name = string(Base.nameof(sys)), x = symstr.(unknowns(ssys)), u = symstr.(input_names), y = symstr.(output_names))
+    end
+    (; linsystems = named_linsystems, ssys, ops, resolved_ops)
 end
 
 "_max_100(t) = length(t) > 100 ? range(extrema(t)..., 100) : t"
