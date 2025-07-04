@@ -115,18 +115,18 @@ closed_loop_eqs = [
 plot(layout=2)
 
 # Simulate each individual controller
-# for C in Cs
-#     @named Ci = System(C)
-#     eqs = [
-#         closed_loop_eqs
-#         connect(fb.output, Ci.input)
-#         connect(Ci.output, duffing.u)
-#     ]
-#     @named closed_loop = System(eqs, t, systems=[duffing, Ci, fb, ref, F])
-#     prob = ODEProblem(structural_simplify(closed_loop), [F.x => 0, F.xd => 0], (0.0, 8.0))
-#     sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
-#     plot!(sol, idxs=[duffing.y.u, duffing.u.u], layout=2, lab="")
-# end
+for C in Cs
+    @named Ci = System(C)
+    eqs = [
+        closed_loop_eqs
+        connect(fb.output, Ci.input)
+        connect(Ci.output, duffing.u)
+    ]
+    @named closed_loop = System(eqs, t, systems=[duffing, Ci, fb, ref, F])
+    prob = ODEProblem(structural_simplify(closed_loop), [F.x => 0, F.xd => 0], (0.0, 8.0))
+    sol = solve(prob, Rodas5P(), abstol=1e-8, reltol=1e-8)
+    plot!(sol, idxs=[duffing.y.u, duffing.u.u], layout=2, lab="")
+end
 
 # Simulate gain-scheduled controller
 @named Cgs = GainScheduledStateSpace(Cs, xs, interpolator=LinearInterpolation)
@@ -219,6 +219,10 @@ plot(
 )
 ```
 if we open at both `y` and `v` or we open at `u`, we get controllers for the different values of the scheduling variable, and the corresponding measurement feedback (which is the same as the scheduling variable in this case).
+```@example BATCHLIN
+using Test
+@test all(sminreal.(controllersv) .== sminreal.(controllersu))
+```
 
 However, if we only open at `y` we get controller linearizations that _still contain the closed loop through the scheduling connection_ `v`. We can verify this by looking at what variables are present in the input-output map
 ```@example BATCHLIN
@@ -248,6 +252,5 @@ Batch linearization in multiple different operating points is an intuitive way t
 
 
 ```@example BATCHLIN
-using Test
 @test sol(6.99, idxs=closed_loop.duffing.y.u) ≈ 0.0 atol=0.01
 ```
