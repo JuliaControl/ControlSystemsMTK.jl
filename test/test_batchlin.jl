@@ -19,7 +19,7 @@ eqs = [D(x) ~ v
        y.u ~ x]
 
 
-@named duffing = ODESystem(eqs, t, systems=[y, u])
+@named duffing = System(eqs, t, systems=[y, u])
 
 bounds = getbounds(duffing, unknowns(duffing))
 sample_within_bounds((l, u)) = (u - l) * rand() + l
@@ -32,14 +32,14 @@ inputs, outputs = [u.u], [y.u]
 Ps, ssys = batch_ss(duffing, inputs, outputs , ops)
 @test length(Ps) == N
 
-@test Ps[1] == ss(linearize(duffing, inputs, outputs; op=ops[1])[1]...)
-@test Ps[end] == ss(linearize(duffing, inputs, outputs; op=ops[end])[1]...)
+@test Ps[1].sys == ss(linearize(duffing, inputs, outputs; op=ops[1])[1]...)
+@test Ps[end].sys == ss(linearize(duffing, inputs, outputs; op=ops[end])[1]...)
 
 ##
 
 using DataInterpolations
 @named Cgs = GainScheduledStateSpace(Ps, xs, interpolator=LinearInterpolation)
-@test Cgs isa ODESystem
+@test Cgs isa System
 # This is tested better in the docs
 
 ## C-code generation
@@ -53,7 +53,7 @@ import ModelingToolkitStandardLibrary.Blocks
 @named fb = Blocks.Add(k2=-1)
 @named ref = Blocks.Square(frequency=1/6, amplitude=0.5, offset=0.5, start_time=1)
 @named F = Blocks.SecondOrder(w=10, d=0.7)
-@named C = ODESystem(pid(1,1,0; state_space=true, Tf=0.01))
+@named C = System(pid(1,1,0; state_space=true, Tf=0.01))
 
 
 closed_loop_eqs = [
@@ -64,7 +64,7 @@ closed_loop_eqs = [
     ModelingToolkit.connect(C.output, duffing.u)
 ]
 
-@named closed_loop = ODESystem(closed_loop_eqs, t, systems=[duffing, C, fb, ref, F])
+@named closed_loop = System(closed_loop_eqs, t, systems=[duffing, C, fb, ref, F])
 
 ssys = structural_simplify(closed_loop)
 prob = ODEProblem(ssys, [F.xd => 0], (0.0, 8.0))

@@ -21,7 +21,7 @@ pkg> add ControlSystemsMTK
 
 
 ## From ControlSystems to ModelingToolkit
-Simply calling `ODESystem(sys)` converts a `StateSpace` object from ControlSystems into the corresponding [`ModelingToolkitStandardLibrary.Blocks.StateSpace`](http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace). If `sys` is a [named statespace object](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), the names of inputs and outputs will be retained in the `ODESystem` as connectors, that is, if `my_input` is an input variable in the named statespace object, `my_input` will be a connector of type `RealInput` in the resulting ODESystem. Names of state variables are currently ignored.
+Simply calling `System(sys)` converts a `StateSpace` object from ControlSystems into the corresponding [`ModelingToolkitStandardLibrary.Blocks.StateSpace`](http://mtkstdlib.sciml.ai/dev/API/blocks/#ModelingToolkitStandardLibrary.Blocks.StateSpace). If `sys` is a [named statespace object](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Named-systems), the names of inputs and outputs will be retained in the `System` as connectors, that is, if `my_input` is an input variable in the named statespace object, `my_input` will be a connector of type `RealInput` in the resulting System. Names of state variables are currently ignored.
 
 ### Example:
 
@@ -41,7 +41,7 @@ D =
 
 Continuous-time state-space model
 
-julia> @named P = ODESystem(P0)
+julia> @named P = System(P0)
 Model P with 2 equations
 States (3):
   x[1](t) [defaults to 0.0]
@@ -65,15 +65,15 @@ using ControlSystemsMTK, ControlSystemsBase, ModelingToolkit, RobustAndOptimalCo
 P = named_ss(DemoSystems.double_mass_model(outputs = [1,3]), u=:torque, y=[:motor_angle, :load_angle])
 ```
 
-When we convert this system to an ODESystem, we get a system with connectors `P.torque` and `P.motor_angle`, in addition to the standard connectors `P.input` and `P.output`:
+When we convert this system to a `System`, we get a system with connectors `P.torque` and `P.motor_angle`, in addition to the standard connectors `P.input` and `P.output`:
 ```@example CONNECT
-@named P_ode = ODESystem(P)
+@named P_ode = System(P)
 ```
 Here, `P.torque` is equal to `P.input`, so you may choose to connect to either of them. However, since the output is multivariable, the connector `P.output` represents both outputs, while `P.motor_angle` and `P.load_angle` represent the individual scalar outputs.
 
 
 ## From ModelingToolkit to ControlSystems
-An `ODESystem` can be converted to a named statespace object from [RobustAndOptimalControl.jl](https://github.com/JuliaControl/RobustAndOptimalControl.jl) by calling [`named_ss`](@ref)
+A `System` can be converted to a named statespace object from [RobustAndOptimalControl.jl](https://github.com/JuliaControl/RobustAndOptimalControl.jl) by calling [`named_ss`](@ref)
 
 ```julia
 named_ss(ode_sys, inputs, outputs; op)
@@ -167,9 +167,9 @@ function SystemModel(u=nothing; name=:model)
     ]
     if u !== nothing 
         push!(eqs, connect(u.output, :u, torque.tau))
-        return @named model = ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper, u])
+        return @named model = System(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper, u])
     end
-    ODESystem(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper], name)
+    System(eqs, t; systems = [sens, torque, inertia1, inertia2, spring, damper], name)
 end
 
 model = SystemModel() |> complete
@@ -194,7 +194,8 @@ That's pretty cool, but even nicer is to generate some code for this symbolic sy
 ```@example LINEAIZE_SYMBOLIC
 defs = ModelingToolkit.defaults(simplified_sys)
 defs = merge(Dict(unknowns(model) .=> 0), defs)
-x, pars = ModelingToolkit.get_u0_p(simplified_sys, defs, defs) # Extract the default state and parameter values
+x = ModelingToolkit.get_u0(simplified_sys, defs) # Extract the default state and parameter values
+pars = ModelingToolkit.get_p(simplified_sys, defs, split=false)
 
 fun = Symbolics.build_function(symbolic_sys, unknowns(simplified_sys), ModelingToolkit.parameters(simplified_sys);
     expression = Val{false}, # Generate a compiled function rather than a Julia expression
