@@ -32,8 +32,8 @@ inputs, outputs = [u.u], [y.u]
 Ps, ssys = batch_ss(duffing, inputs, outputs , ops)
 @test length(Ps) == N
 
-@test Ps[1] == ss(linearize(duffing, inputs, outputs; op=ops[1])[1]...)
-@test Ps[end] == ss(linearize(duffing, inputs, outputs; op=ops[end])[1]...)
+@test Ps[1].sys == ss(linearize(duffing, inputs, outputs; op=ops[1])[1]...)
+@test Ps[end].sys == ss(linearize(duffing, inputs, outputs; op=ops[end])[1]...)
 
 ##
 
