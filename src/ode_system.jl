@@ -58,7 +58,7 @@ symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
 
 
 """
-    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, kwargs...)
+    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, simple_infeigs=true, kwargs...)
 
 Convert an `System` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`.
 
@@ -74,6 +74,7 @@ function RobustAndOptimalControl.named_ss(
     inputs,
     outputs;
     descriptor = true,
+    simple_infeigs = true,
     kwargs...,
 )
 
@@ -112,7 +113,7 @@ function RobustAndOptimalControl.named_ss(
         # This indicates that input derivatives are present
         duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
         u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
-        lsys = causal_simplification(matrices, u2du; descriptor)
+        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs)
     else
         lsys = ss(matrices...)
     end
@@ -121,10 +122,11 @@ function RobustAndOptimalControl.named_ss(
     u0 = [xpt.p[pi] for pi in pind] 
     xu = (; x = x0, u = u0)
     extra = Dict(:operating_point => xu)
-
+    # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
+    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [Symbol(string(nameof(sys))*"_x$i") for i in 1:lsys.nx]
     named_ss(
         lsys;
-        x = symstr.(unknowns(ssys)),
+        x = x_names,
         u = unames,
         y = symstr.(outputs),
         name = string(Base.nameof(sys)),
@@ -132,7 +134,10 @@ function RobustAndOptimalControl.named_ss(
     )
 end
 
-function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true)
+"""
+    causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs = true)
+"""
+function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs = true)
     fm(x) = convert(Matrix{Float64}, x)
     nx = size(sys.A, 1)
     ny = size(sys.C, 1)
@@ -155,7 +160,7 @@ function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor
         Ce = [fm(sys.C) zeros(ny, ndu)]
         De = fm(D)
         dsys = dss(Ae, E, Be, Ce, De)
-        return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys)[1])
+        return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys; simple_infeigs)[1])
     else
         ss(sys.A, B, sys.C, D) + ss(sys.A, B̄, sys.C, D̄)*tf('s')
     end
@@ -199,6 +204,7 @@ function named_sensitivity_function(
     sys::ModelingToolkit.AbstractSystem,
     inputs, args...;
     descriptor = true,
+    simple_infeigs = true,
     kwargs...,
 )
 
@@ -224,13 +230,14 @@ function named_sensitivity_function(
         # This indicates that input derivatives are present
         duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
         u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
-        lsys = causal_simplification(matrices, u2du; descriptor)
+        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs)
     else
         lsys = ss(matrices...)
     end
+    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [Symbol(string(nameof(sys))*"_x$i") for i in 1:lsys.nx]
     named_ss(
         lsys;
-        x = symstr.(unknowns(ssys)),
+        x = x_names,
         u = unames,
         y = unames, #Symbol.("out_" .* string.(inputs)),
         name = string(Base.nameof(sys)),
