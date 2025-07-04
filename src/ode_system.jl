@@ -346,7 +346,7 @@ unsafe_comparisons(true)
 @variables x(t)=0 [bounds = (-2, 2)]
 @variables v(t)=0
 @variables u(t)=0
-@variables y(t)=0
+@variables y(t)
 
 D = Differential(t)
 
@@ -360,6 +360,7 @@ eqs = [D(x) ~ v
 bounds = getbounds(duffing, unknowns(duffing))
 sample_within_bounds((l, u)) = (u - l) * rand() + l
 # Create a vector of operating points
+N = 10
 ops = map(1:N) do i
     op = Dict(x => sample_within_bounds(bounds[x]) for x in keys(bounds) if isfinite(bounds[x][1]))
 end
@@ -403,7 +404,11 @@ See also [`trajectory_ss`](@ref) and [`fuzz`](@ref).
 """
 function batch_ss(args...; kwargs...)
     lins, ssys, resolved_ops = batch_linearize(args...; kwargs...)
-    [ss(l...) for l in lins], ssys, resolved_ops
+    named_linsystems = map(lins) do l
+        # Convert to a NamedStateSpace with the same names as the original system
+        named_ss(ss(l.A, l.B, l.C, l.D); name = string(Base.nameof(ssys)), x = symstr.(unknowns(ssys)))
+    end
+    named_linsystems, ssys, resolved_ops
 end
 
 # function unnamespace(ap)
