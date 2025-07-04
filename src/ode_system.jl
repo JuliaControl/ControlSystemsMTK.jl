@@ -600,10 +600,10 @@ function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1]
     s1 = first(systems)
     (; nx, nu, ny) = s1
 
-    Aint = [maybe_interp(interpolator, getindex.(getfield.(systems, :A), i, j), vt) for i = 1:nx, j = 1:nx]
-    Bint = [maybe_interp(interpolator, getindex.(getfield.(systems, :B), i, j), vt) for i = 1:nx, j = 1:nu]
-    Cint = [maybe_interp(interpolator, getindex.(getfield.(systems, :C), i, j), vt) for i = 1:ny, j = 1:nx]
-    Dint = [maybe_interp(interpolator, getindex.(getfield.(systems, :D), i, j), vt) for i = 1:ny, j = 1:nu]
+    Aint = [maybe_interp(interpolator, getindex.(getproperty.(systems, :A), i, j), vt) for i = 1:nx, j = 1:nx]
+    Bint = [maybe_interp(interpolator, getindex.(getproperty.(systems, :B), i, j), vt) for i = 1:nx, j = 1:nu]
+    Cint = [maybe_interp(interpolator, getindex.(getproperty.(systems, :C), i, j), vt) for i = 1:ny, j = 1:nx]
+    Dint = [maybe_interp(interpolator, getindex.(getproperty.(systems, :D), i, j), vt) for i = 1:ny, j = 1:nu]
 
     @named input = Blocks.RealInput(nin = nu)
     @named scheduling_input = Blocks.RealInput()
