@@ -152,6 +152,7 @@ function ControlSystemsBase.ss(
     named_ss(sys, inputs, outputs; kwargs...).sys # just discard the names
 end
 
+symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
 
 """
     RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, simple_infeigs=true, balance=false, kwargs...)
@@ -206,7 +207,6 @@ function RobustAndOptimalControl.named_ss(
         end
     end
     matrices, ssys = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
-    symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
