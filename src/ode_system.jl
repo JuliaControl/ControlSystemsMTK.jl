@@ -124,7 +124,7 @@ function RobustAndOptimalControl.named_ss(
     xu = (; x = x0, u = u0)
     extra = Dict(:operating_point => xu)
     # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
-    x_names = get_x_names(lsys, sys; descriptor, simple_infeigs, balance)
+    x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
     nsys = named_ss(
         lsys;
         x = x_names,
@@ -278,7 +278,7 @@ function named_sensitivity_function(
     else
         lsys = ss(matrices...)
     end
-    x_names = get_x_names(lsys, sys; descriptor, simple_infeigs, balance)
+    x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
     nsys = named_ss(
         lsys;
         x = x_names,
