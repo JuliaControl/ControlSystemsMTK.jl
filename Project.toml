@@ -1,7 +1,7 @@
 name = "ControlSystemsMTK"
 uuid = "687d7614-c7e5-45fc-bfc3-9ee385575c88"
 authors = ["Fredrik Bagge Carlson"]
-version = "2.4.0"
+version = "2.4.1"
 
 
 [deps]
@@ -17,7 +17,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ControlSystemsBase = "1.0.1"
-DataInterpolations = "3, 4, 5, 6, 7"
+DataInterpolations = "5, 6, 7, 8"
 ModelingToolkit = "10.3"
 ModelingToolkitStandardLibrary = "2"
 MonteCarloMeasurements = "1.1"
