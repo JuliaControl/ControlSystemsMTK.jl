@@ -335,18 +335,25 @@ op2[cart.f] = 0
 @test G.ny == length(lin_outputs)
 
 ## Test difficult `named_ss` simplification
-using ControlSystemsMTK, ControlSystemsBase, RobustAndOptimalControl
+using ControlSystemsMTK, ControlSystemsBase, RobustAndOptimalControl, Test, GenericLinearAlgebra
 lsys = (A = [0.0 2.778983834717109e8 1.4122312296634873e6 0.0; 0.0 0.0 0.0 0.037848975765016724; 0.0 24.837541148074962 0.12622006230897712 0.0; -0.0 -4.620724819774693 -0.023481719514324866 -0.6841991610512456], B = [-5.042589978197361e8 0.0; -0.0 0.0; -45.068824982602656 -0.0; 8.384511049369085 54.98555939873381], C = [0.0 0.0 0.954929658551372 0.0], D = [0.0 0.0])
 
 # lsys = (A = [-0.0075449237853825925 1.6716817118020731e-6 0.0; 1864.7356343162514 -0.4131578457122937 0.0; 0.011864343330426718 -2.6287085638214332e-6 0.0], B = [0.0 0.0; 0.0 52566.418015009294; 0.0 0.3284546792274811], C = [1.4683007399899215e8 0.0 0.0], D = [-9.157636303058283e7 0.0])
 
 G = ControlSystemsMTK.causal_simplification(lsys, [1=>2])
+G = minreal(G, 1e-12)
 G2 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=false)
 G2 = minreal(G2, 1e-12)
+G3 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], big=true)
+G3 = minreal(G3, 1e-12)
+G4 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=true, balance=true)
+G4 = minreal(G4, 1e-12)
 
-@test dcgain(G, 1e-5)[] ≈ dcgain(G2, 1e-5)[] rtol=1e-3
-@test freqresp(G, 1)[] ≈ freqresp(G2, 1)[]
-@test freqresp(G, 10)[] ≈ freqresp(G2, 10)[]
+w_test = [1e-5, 1, 10, 100]
+@test freqresp(G, w_test) ≈ freqresp(G2, w_test) rtol=1e-6
+@test freqresp(G, w_test) ≈ freqresp(G3, w_test) rtol=1e-6
+@test freqresp(G, w_test) ≈ freqresp(G4, w_test) rtol=1e-6
+
 
 z = 0.462726166562343204837317130554462562
 
@@ -366,15 +373,22 @@ w = exp10.(LinRange(-12, 2, 2000))
 
 ## artificial fully dense test
 
-lsys = ssrand(2,2,3,proper=true)
+lsys = let
+    tempA = [-0.8101413207021115 0.905054220094988 -0.12282983628692003; 0.9066960393438117 -1.3378400902008518 -0.0610101630607034; -0.07253623899748166 1.4118402411983302 -1.7957106725392422]
+    tempB = [-0.8984842931160537 1.4012460461970973; -0.6086273804588082 0.9336277670619954; -0.1376448663325406 0.19241847208402496]
+    tempC = [1.1228782382333735 0.041349950615147096 -1.3629397459682921; 0.10499710831314196 -1.228883432780842 0.044498460069701234]
+    tempD = [0.0 0.0; 0.0 0.0]
+    ss(tempA, tempB, tempC, tempD)
+end
 G = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=false)
 G2 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=true)
 G3 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=false, big=true)
 G4 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=true, simple_infeigs=false, balance=true)
+G5 = ControlSystemsMTK.causal_simplification(lsys, [1=>2], descriptor=true, big=true)
 
 w_test = [1e-5, 1, 100]
 @test freqresp(G, w_test) ≈ freqresp(G2, w_test)
 @test freqresp(G, w_test) ≈ freqresp(G3, w_test)
 @test freqresp(G, w_test) ≈ freqresp(G4, w_test)
 
-# bodeplot([G, G2, G3, G4], exp10.(LinRange(-2, 2, 200)))
+# bodeplot([G, G2, G3, G4, G5], exp10.(LinRange(-2, 2, 200)))

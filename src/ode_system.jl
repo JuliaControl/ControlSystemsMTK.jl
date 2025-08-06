@@ -151,26 +151,28 @@ function get_x_names(lsys, sys; descriptor, simple_infeigs, balance)
 end
 
 """
-    causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs=true, balance=false)
+    causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs=true, balance=false, big=false)
 
 If `descriptor = true`, the function `DescriptorSystems.dss2ss` is used. In this case, 
 - `balance`: indicates whether to balance the system using `DescriptorSystems.gprescale` before conversion to `StateSpace`. Balancing changes the state realization (through scaling).
 - `simple_infeigs`: if set to false, further simplification may be performed in some cases. 
 
-If `descriptor = false`, the argument `big = true` performs computations in `BigFloat` precision, useful for poorly scaled systems.
+The argument `big = true` performs computations in `BigFloat` precision, useful for poorly scaled systems. This may require the user to install and load `GenericLinearAlgebra` (if you get error `no method matching svd!(::Matrix{BigFloat})`).
 """
 function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; balance=false, descriptor=true, simple_infeigs = true, big = false)
-    fm(x) = convert(Matrix{Float64}, x)
+    T = big ? BigFloat : Float64
+    b1 = big ? Base.big(1.0) : 1.0
+    fm(x) = convert(Matrix{T}, x)
     nx = size(sys.A, 1)
     ny = size(sys.C, 1)
     ndu = length(u2duinds)
     nu = size(sys.B, 2) - ndu
     u_with_du_inds = first.(u2duinds)
     duinds = last.(u2duinds)
-    B = sys.B[:, 1:nu]
-    B̄ = sys.B[:, duinds]
-    D = sys.D[:, 1:nu]
-    D̄ = sys.D[:, duinds]
+    B = b1*sys.B[:, 1:nu]
+    B̄ = b1*sys.B[:, duinds]
+    D = b1*sys.D[:, 1:nu]
+    D̄ = b1*sys.D[:, duinds]
     iszero(fm(D̄)) || error("Nonzero feedthrough matrix from input derivative not supported")
     if descriptor
         Iu = u_with_du_inds .== (1:nu)'
@@ -191,20 +193,9 @@ function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; balance=fa
 
         return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys; simple_infeigs, fast=false)[1])
     else
-        if big
-            b1 = Base.big(1.0)
-            ss(b1*sys.A, b1*B, b1*sys.C, b1*D) + diff_out(ss(b1*sys.A, b1*B̄, b1*sys.C, b1*D̄))
-        else
-            b = balance ? s->balance_statespace(sminreal(s))[1] : identity
-            b(ss(sys.A, B, sys.C, D)) + b(ss(sys.A, B̄, sys.C, D̄))*tf('s')
-        end
+        b = balance ? s->balance_statespace(sminreal(s))[1] : identity
+        b(ss(sys.A, B, sys.C, D)) + b(ss(sys.A, B̄, sys.C, D̄))*tf('s')
     end
-end
-
-function diff_out(sys)
-    A,B,C,D = ssdata(sys)
-    iszero(D) || error("Nonzero feedthrough matrix not supported")
-    ss(A,B,C*A, C*B, sys.timeevol)
 end
 
 
