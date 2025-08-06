@@ -56,9 +56,8 @@ end
 
 symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
 
-
 """
-    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, simple_infeigs=true, kwargs...)
+    RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, simple_infeigs=true, balance=false, kwargs...)
 
 Convert an `System` to a `NamedStateSpace` using linearization. `inputs, outputs` are vectors of variables determining the inputs and outputs respectively. See docstring of `ModelingToolkit.linearize` for more info on `kwargs`.
 
@@ -75,6 +74,8 @@ function RobustAndOptimalControl.named_ss(
     outputs;
     descriptor = true,
     simple_infeigs = true,
+    balance = descriptor && !simple_infeigs, # balance only if descriptor is true and simple_infeigs is false
+    big = false,
     kwargs...,
 )
 
@@ -113,7 +114,7 @@ function RobustAndOptimalControl.named_ss(
         # This indicates that input derivatives are present
         duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
         u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
-        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs)
+        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance)
     else
         lsys = ss(matrices...)
     end
@@ -123,8 +124,8 @@ function RobustAndOptimalControl.named_ss(
     xu = (; x = x0, u = u0)
     extra = Dict(:operating_point => xu)
     # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
-    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [Symbol(string(nameof(sys))*"_x$i") for i in 1:lsys.nx]
-    named_ss(
+    x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
+    nsys = named_ss(
         lsys;
         x = x_names,
         u = unames,
@@ -132,12 +133,33 @@ function RobustAndOptimalControl.named_ss(
         name = string(Base.nameof(sys)),
         extra,
     )
+    RobustAndOptimalControl.set_extra!(nsys, :ssys, ssys)
+    nsys
+end
+
+function get_x_names(lsys, sys; descriptor, simple_infeigs, balance)
+    generic = if descriptor
+        !simple_infeigs || balance
+    else
+        true
+    end
+    if generic
+        [Symbol(string(nameof(sys))*"_x$i") for i in 1:lsys.nx]
+    else
+        symstr.(unknowns(sys))
+    end
 end
 
 """
-    causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs = true)
+    causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs=true, balance=false)
+
+If `descriptor = true`, the function `DescriptorSystems.dss2ss` is used. In this case, 
+- `balance`: indicates whether to balance the system using `DescriptorSystems.gprescale` before conversion to `StateSpace`. Balancing changes the state realization (through scaling).
+- `simple_infeigs`: if set to false, further simplification may be performed in some cases. 
+
+If `descriptor = false`, the argument `big = true` performs computations in `BigFloat` precision, useful for poorly scaled systems.
 """
-function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor=true, simple_infeigs = true)
+function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; balance=false, descriptor=true, simple_infeigs = true, big = false)
     fm(x) = convert(Matrix{Float64}, x)
     nx = size(sys.A, 1)
     ny = size(sys.C, 1)
@@ -160,11 +182,31 @@ function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; descriptor
         Ce = [fm(sys.C) zeros(ny, ndu)]
         De = fm(D)
         dsys = dss(Ae, E, Be, Ce, De)
-        return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys; simple_infeigs)[1])
+        if balance
+            dsys, T1, T2 = RobustAndOptimalControl.DescriptorSystems.gprescale(dsys)
+        else
+            bq = RobustAndOptimalControl.DescriptorSystems.gbalqual(dsys)
+            bq > 10000 && @warn("The numerical balancing of the system is poor (gbalqual = $bq), consider using `balance=true` to balance the system before conversion to StateSpace to improve accuracy of the result.")
+        end
+
+        return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys; simple_infeigs, fast=false)[1])
     else
-        ss(sys.A, B, sys.C, D) + ss(sys.A, B̄, sys.C, D̄)*tf('s')
+        if big
+            b1 = Base.big(1.0)
+            ss(b1*sys.A, b1*B, b1*sys.C, b1*D) + diff_out(ss(b1*sys.A, b1*B̄, b1*sys.C, b1*D̄))
+        else
+            b = balance ? s->balance_statespace(sminreal(s))[1] : identity
+            b(ss(sys.A, B, sys.C, D)) + b(ss(sys.A, B̄, sys.C, D̄))*tf('s')
+        end
     end
 end
+
+function diff_out(sys)
+    A,B,C,D = ssdata(sys)
+    iszero(D) || error("Nonzero feedthrough matrix not supported")
+    ss(A,B,C*A, C*B, sys.timeevol)
+end
+
 
 for f in [:sensitivity, :comp_sensitivity, :looptransfer]
     fnn = Symbol("get_named_$f")
@@ -205,6 +247,8 @@ function named_sensitivity_function(
     inputs, args...;
     descriptor = true,
     simple_infeigs = true,
+    balance = descriptor && !simple_infeigs, # balance only if descriptor is true and simple_infeigs is false
+    big = false,
     kwargs...,
 )
 
@@ -230,18 +274,20 @@ function named_sensitivity_function(
         # This indicates that input derivatives are present
         duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
         u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
-        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs)
+        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance)
     else
         lsys = ss(matrices...)
     end
-    x_names = simple_infeigs ? symstr.(unknowns(ssys)) : [Symbol(string(nameof(sys))*"_x$i") for i in 1:lsys.nx]
-    named_ss(
+    x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
+    nsys = named_ss(
         lsys;
         x = x_names,
         u = unames,
         y = unames, #Symbol.("out_" .* string.(inputs)),
         name = string(Base.nameof(sys)),
     )
+    RobustAndOptimalControl.set_extra!(nsys, :ssys, ssys)
+    nsys
 end
 
 if isdefined(ModelingToolkit, :get_disturbance_system)
