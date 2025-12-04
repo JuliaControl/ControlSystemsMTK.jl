@@ -26,13 +26,15 @@ function ModelingToolkit.System(
     x = ControlSystemsBase.state_names(sys),
     u = ControlSystemsBase.input_names(sys),
     y = ControlSystemsBase.output_names(sys),
+    u0 = zeros(sys.nu),
+    y0 = zeros(sys.ny),
 )
     ControlSystemsBase.isdiscrete(sys) && error(
         "Discrete systems not yet supported due to https://github.com/SciML/ModelingToolkit.jl/issues?q=is%3Aopen+is%3Aissue+label%3Adiscrete-time",
     )
     uc = [Blocks.RealInput(; name = Symbol(u)) for u in u]
     yc = [Blocks.RealOutput(; name = Symbol(y)) for y in y]
-    @named ssblock = Blocks.StateSpace(ssdata(sys)...; x = x0)
+    @named ssblock = Blocks.StateSpace(ssdata(sys)...; x = x0, u0, y0)
     @unpack input, output = ssblock
     systems = [uc; yc; input; output]
     eqs = [
@@ -191,6 +193,7 @@ function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; balance=fa
             bq > 10000 && @warn("The numerical balancing of the system is poor (gbalqual = $bq), consider using `balance=true` to balance the system before conversion to StateSpace to improve accuracy of the result.")
         end
 
+        # NOTE: the conversion implemented in ss(dss) uses gss2ss due to it's initial call to gir to produce a reduced order model and then an SVD-based alg to improve numerics. Should we use this by default?
         return ss(RobustAndOptimalControl.DescriptorSystems.dss2ss(dsys; simple_infeigs, fast=false)[1])
     else
         b = balance ? s->balance_statespace(sminreal(s))[1] : identity
@@ -497,6 +500,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     defs = ModelingToolkit.defaults(sys)
     ops = map(t) do ti
         opsol = Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
+        # When the new behavior of Break is introduced, speficy the value for all inupts in ssys by `for x in [x; perturbation_vars]` on the line above
         # opsolu = Dict(new_u => robust_sol_getindex(sol, ti, u, defs; verbose) for (new_u, u) in zip(perturbation_vars, original_inputs))
         merge(op_nothing, opsol)
     end
