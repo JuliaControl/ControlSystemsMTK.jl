@@ -212,7 +212,7 @@ mats, ssys = ModelingToolkit.linearize_symbolic(model, [model.torque.tau.u], [mo
 sys = ss((mats...,)[1:4]...)
 
 
-defs = ModelingToolkit.defaults(ssys)
+defs = ModelingToolkit.initial_conditions(ssys)
 defs = merge(Dict(unknowns(model) .=> 0), defs)
 p = ModelingToolkit.get_p(ssys, defs, split=false)
 
@@ -247,7 +247,7 @@ eqs = [connect(r.output, F.input)
     connect(F.output, sys_inner.add.input1)]
 sys_outer = System(eqs, t, systems = [F, sys_inner, r], name = :outer)
 
-matrices, _ = Blocks.get_sensitivity(sys_outer, [sys_outer.inner.plant_input, sys_outer.inner.plant_output])
+matrices, _ = get_sensitivity(sys_outer, [sys_outer.inner.plant_input, sys_outer.inner.plant_output])
 S = ss(matrices...)
 
 Sn = get_named_sensitivity(sys_outer, [sys_outer.inner.plant_input, sys_outer.inner.plant_output])
@@ -301,7 +301,7 @@ op = Dict(cart.s => 10, cart.v => 0, link1.A => -pi/2, link1.dA => 0, force.f.u 
 guesses = [link1.fy1 => 0.1, cart.f => 0.1]
 
 G = named_ss(model, lin_inputs, lin_outputs; allow_symbolic = true, op,
-    allow_input_derivatives = true, zero_dummy_der = true, guesses)
+    allow_input_derivatives = true, guesses)
 G = sminreal(G)
 @test 10 ∈ RobustAndOptimalControl.operating_point(G).x
 @info "minreal"
