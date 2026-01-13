@@ -300,6 +300,7 @@ op = Dict(cart.s => 10, cart.v => 0, link1.A => -pi/2, link1.dA => 0, force.f.u 
 
 guesses = [link1.fy1 => 0.1, cart.f => 0.1]
 
+MTK = ModelingToolkit
 @show length(filter(kvp -> !MTK.isinitial(kvp[1]) && !MTK.isparameter(kvp[1]), initial_conditions(model)))
 G = named_ss(model, lin_inputs, lin_outputs; allow_symbolic = true, op,
     allow_input_derivatives = true, guesses)
