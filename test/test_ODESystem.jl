@@ -284,7 +284,7 @@ D = Differential(t)
 @named link1 = Link(; m = 0.2, l = 10, I = 1, g = -9.807)
 @named cart = TranslationalPosition.Mass(; m = 1, s = 0)
 @named fixed = TranslationalPosition.Fixed()
-@named force = Force(use_support = false)
+@named force = TranslationalPosition.Force(use_support = false)
 
 eqs = [connect(link1.TX1, cart.flange)
        connect(cart.flange, force.flange)
@@ -300,6 +300,7 @@ op = Dict(cart.s => 10, cart.v => 0, link1.A => -pi/2, link1.dA => 0, force.f.u 
 
 guesses = [link1.fy1 => 0.1, cart.f => 0.1]
 
+@show length(filter(kvp -> !MTK.isinitial(kvp[1]) && !MTK.isparameter(kvp[1]), initial_conditions(model)))
 G = named_ss(model, lin_inputs, lin_outputs; allow_symbolic = true, op,
     allow_input_derivatives = true, guesses)
 G = sminreal(G)
