@@ -139,6 +139,47 @@ function RobustAndOptimalControl.named_ss(
     nsys
 end
 
+function RobustAndOptimalControl.named_ss(
+    sys::ModelingToolkit.AbstractSystem, linfun::ModelingToolkit.LinearizationFunction, outputs;
+    descriptor = true,
+    simple_infeigs = true,
+    balance = descriptor && !simple_infeigs, # balance only if descriptor is true and simple_infeigs is false
+    big = false,
+    kwargs...,
+)
+    ssys = sys
+    matrices, xpt = ModelingToolkit.linearize(sys, linfun; kwargs...)
+    inputs = linfun.inputs
+    nu = length(inputs)
+    unames = symstr.(inputs)
+    if nu > 0 && size(matrices.B, 2) == 2nu
+        # This indicates that input derivatives are present
+        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
+        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance, verbose=false)
+    else
+        lsys = ss(matrices...)
+    end
+    pind = [ModelingToolkit.parameter_index(ssys, i) for i in ModelingToolkit.inputs(ssys)]
+    x0 = xpt.x
+    u0 = [xpt.p[pi] for pi in pind] 
+    xu = (; x = x0, u = u0)
+    extra = Dict(:operating_point => xu)
+    # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
+    x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
+    nsys = named_ss(
+        lsys;
+        x = x_names,
+        u = unames,
+        y = symstr.(outputs),
+        name = string(Base.nameof(sys)),
+        extra,
+    )
+    RobustAndOptimalControl.set_extra!(nsys, :ssys, ssys)
+    nsys
+
+end
+
 function get_x_names(lsys, sys; descriptor, simple_infeigs, balance)
     generic = if descriptor
         !simple_infeigs || balance
@@ -161,7 +202,7 @@ If `descriptor = true`, the function `DescriptorSystems.dss2ss` is used. In this
 
 The argument `big = true` performs computations in `BigFloat` precision, useful for poorly scaled systems. This may require the user to install and load `GenericLinearAlgebra` (if you get error `no method matching svd!(::Matrix{BigFloat})`).
 """
-function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; balance=false, descriptor=true, simple_infeigs = true, big = false)
+function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; balance=false, descriptor=true, simple_infeigs = true, big = false, verbose = true)
     T = big ? BigFloat : Float64
     b1 = big ? Base.big(1.0) : 1.0
     fm(x) = convert(Matrix{T}, x)
@@ -190,7 +231,7 @@ function causal_simplification(sys, u2duinds::Vector{Pair{Int, Int}}; balance=fa
             dsys, T1, T2 = RobustAndOptimalControl.DescriptorSystems.gprescale(dsys)
         else
             bq = RobustAndOptimalControl.DescriptorSystems.gbalqual(dsys)
-            bq > 10000 && @warn("The numerical balancing of the system is poor (gbalqual = $bq), consider using `balance=true` to balance the system before conversion to StateSpace to improve accuracy of the result.")
+            verbose && bq > 10000 && @warn("The numerical balancing of the system is poor (gbalqual = $bq), consider using `balance=true` to balance the system before conversion to StateSpace to improve accuracy of the result.")
         end
 
         # NOTE: the conversion implemented in ss(dss) uses gss2ss due to it's initial call to gir to produce a reduced order model and then an SVD-based alg to improve numerics. Should we use this by default?
@@ -206,7 +247,7 @@ for f in [:sensitivity, :comp_sensitivity, :looptransfer]
     fnn = Symbol("get_named_$f")
     fn = Symbol("get_$f")
     @eval function $(fnn)(args...; kwargs...)
-        named_sensitivity_function(Blocks.$(fn), args...; kwargs...)
+        named_sensitivity_function($(fn), args...; kwargs...)
     end
 end
 
@@ -215,7 +256,7 @@ end
     get_named_sensitivity(sys, ap::AnalysisPoint; kwargs...)
     get_named_sensitivity(sys, ap_name::Symbol; kwargs...)
 
-Call [`ModelingToolkitStandardLibrary.Blocks.get_sensitivity`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
+Call [`get_sensitivity`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
 """
 get_named_sensitivity
 
@@ -223,7 +264,7 @@ get_named_sensitivity
     get_named_comp_sensitivity(sys, ap::AnalysisPoint; kwargs...)
     get_named_comp_sensitivity(sys, ap_name::Symbol; kwargs...)
 
-Call [`ModelingToolkitStandardLibrary.Blocks.get_comp_sensitivity`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
+Call [`get_comp_sensitivity`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
 """
 get_named_comp_sensitivity
 
@@ -231,7 +272,7 @@ get_named_comp_sensitivity
     get_named_looptransfer(sys, ap::AnalysisPoint; kwargs...)
     get_named_looptransfer(sys, ap_name::Symbol; kwargs...)
 
-Call [`ModelingToolkitStandardLibrary.Blocks.get_looptransfer`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
+Call [`get_looptransfer`](@ref) while retaining signal names. Returns a `NamedStateSpace` object (similar to [`named_ss`](@ref)).
 """
 get_named_looptransfer
 
@@ -497,7 +538,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     output_names = reduce(vcat, ap.input.u for ap in vcat(outputs)) 
 
     op_nothing = Dict(unknowns(sys) .=> nothing) # Remove all defaults present in the original system
-    defs = ModelingToolkit.defaults(sys)
+    defs = ModelingToolkit.initial_conditions(sys)
     ops = map(t) do ti
         opsol = Dict(x => robust_sol_getindex(sol, ti, x, defs; verbose) for x in x)
         # When the new behavior of Break is introduced, speficy the value for all inupts in ssys by `for x in [x; perturbation_vars]` on the line above
@@ -778,7 +819,6 @@ Build a function that takes parameters and returns a [`StateSpace`](@ref) object
 - `args` and `kwargs`: are passed to the internal call to `build_function` from the Symbolics.jl package.
 """
 function Symbolics.build_function(sys::AbstractStateSpace, args...; kwargs...)
-    ControlSystemsBase.numeric_type(sys) <: Num || error("Expected a system with symbolic coefficients. Call linearize_symbolic to obtain symbolic jacobians")
     Afun, _ = Symbolics.build_function(sys.A, args...; kwargs...)
     Bfun, _ = Symbolics.build_function(sys.B, args...; kwargs...)
     Cfun, _ = Symbolics.build_function(sys.C, args...; kwargs...)
