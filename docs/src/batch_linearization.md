@@ -164,7 +164,7 @@ bodeplot(Ps2, w, legend=false)
 ```
 Not how the closed-loop system changes very little along the trajectory, this is a good indication that the gain-scheduled controller is able to make the system appear linear.
 
-Internally, [`trajectory_ss`](@ref) works very much the same as [`batch_ss`](@ref), but constructs operating points automatically along the trajectory. This requires that the solution contains the states of the simplified system, accessible through the `idxs` argument like `sol(t, idxs=x)`. By linearizing the same system as we simulated, we ensure that this condition holds, doing so requires that we specify the inputs and outputs as analysis points rather than as variables.
+Internally, [`trajectory_ss`](@ref) works very much the same as [`batch_ss`](@ref), but constructs operating points automatically along the trajectory using `ModelingToolkit.LinearizationOpPoint`. The operating points are extracted from the differential states and parameters of the solution. We specify the inputs and outputs as analysis points to properly define the linearization interface.
 
 
 We can replicate the figure above by linearizing the plant and the controller individually, by providing the `loop_openings` argument. When linearizing the plant, we disconnect the controller input by passing `loop_openings=[closed_loop.u]`, and when linearizing the controller, we have various options for disconnecting the the plant:
@@ -221,7 +221,7 @@ plot(
 if we open at both `y` and `v` or we open at `u`, we get controllers for the different values of the scheduling variable, and the corresponding measurement feedback (which is the same as the scheduling variable in this case).
 ```@example BATCHLIN
 using Test
-@test all(sminreal.(controllersv) .== sminreal.(controllersu))
+@test all(isapprox.(sminreal.(controllersv), sminreal.(controllersu), atol=1e-10))
 ```
 
 However, if we only open at `y` we get controller linearizations that _still contain the closed loop through the scheduling connection_ `v`. We can verify this by looking at what variables are present in the input-output map
