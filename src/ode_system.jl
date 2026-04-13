@@ -534,8 +534,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
     output_names = reduce(vcat, ap.input.u for ap in vcat(outputs))
 
     # Use LinearizationOpPoint to let MTK extract operating points from the solution
-    tc = collect(t)
-    op = ModelingToolkit.LinearizationOpPoint(sol, tc)
+    op = ModelingToolkit.LinearizationOpPoint(sol, t)
     lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op, allow_input_derivatives, kwargs...)
 
     named_linsystems = map(lins) do l
