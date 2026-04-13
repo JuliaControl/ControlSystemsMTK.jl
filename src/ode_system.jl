@@ -492,7 +492,7 @@ centers, radii = fit_complex_perturbations(P * C, w; relative = false, nominal =
 nyquistcircles!(w, centers, radii, ylims = (-4, 1), xlims = (-3, 4))
 ```
 
-See also [`trajectory_ss`](@ref) and [`fuzz`](@ref).
+See also [`trajectory_ss`](@ref).
 """
 function batch_ss(args...; kwargs...)
     lins, ssys, resolved_ops = batch_linearize(args...; kwargs...)
@@ -512,7 +512,7 @@ end
 # end
 
 """
-    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), fuzzer=nothing, verbose = true, kwargs...)
+    linsystems, ssys = trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), kwargs...)
 
 Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `StateSpace` objects and the simplified system.
 
@@ -523,56 +523,20 @@ Operating points are extracted from the solution automatically using `ModelingTo
 - `outputs`: A vector of variables or analysis points.
 - `sol`: An ODE solution object.
 - `t`: Time points along the solution trajectory at which to linearize. The returned array of `StateSpace` objects will be of the same length as `t`.
-- `fuzzer`: A function that takes an operating point dictionary and returns an array of "fuzzed" operating points. This is useful for adding noise/uncertainty to the operating points along the trajectory. See [`ControlSystemsMTK.fuzz`](@ref) for such a function.
 - `kwargs`: Are sent to the linearization functions (e.g., `loop_openings`).
 - `named`: If `true`, the returned systems will be of type `NamedStateSpace`, otherwise they will be of type `StateSpace`.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, fuzzer = nothing, verbose = true, named = true, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, verbose = true, named = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
 
     input_names = reduce(vcat, getproperty.(ap.outputs, :u) for ap in vcat(inputs))
     output_names = reduce(vcat, ap.input.u for ap in vcat(outputs))
 
-    # Use LinearizationOpPoint to extract operating points from the solution.
-    # _build_op_from_solution gives differential states + parameters; we supplement
-    # with all unknowns of the linearization system to avoid initialization issues.
-    _extract_base_op(ti) = ModelingToolkit._build_op_from_solution(ModelingToolkit.LinearizationOpPoint(sol, ti))
+    # Use LinearizationOpPoint to let MTK extract operating points from the solution
     tc = collect(t)
-
-    # First pass: get the linearization system's unknowns
-    lin_fun0, ssys = linearization_function(sys, inputs, outputs; warn_initialize_determined=false, kwargs...)
-    lin_unknowns = unknowns(ssys)
-    defs = ModelingToolkit.initial_conditions(sys)
-
-    ops = map(tc) do ti
-        op = _extract_base_op(ti)
-        for x in lin_unknowns
-            haskey(op, x) && continue
-            try
-                op[x] = sol(ti, idxs=x)
-            catch
-                val = get(defs, x, nothing)
-                val !== nothing && (op[x] = val)
-            end
-        end
-        op
-    end
-
-    if fuzzer !== nothing
-        opsv = map(ops) do op
-            fuzzer(op)
-        end
-        ops = reduce(vcat, opsv)
-        tc = repeat(tc, inner = length(ops) ÷ length(tc))
-    end
-
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], t=tc[1], initialize=false, kwargs...)
-    lins_ops = map(zip(ops, tc)) do (op, ti)
-        linearize(ssys, lin_fun; op, t=ti, allow_input_derivatives)
-    end
-    lins = first.(lins_ops)
-    resolved_ops = last.(lins_ops)
+    op = ModelingToolkit.LinearizationOpPoint(sol, tc)
+    lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op, allow_input_derivatives, kwargs...)
 
     named_linsystems = map(lins) do l
         if named
@@ -583,50 +547,11 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
             ss(l.A, l.B, l.C, l.D)
         end
     end
-    (; linsystems = named_linsystems, ssys, ops, resolved_ops)
+    (; linsystems = named_linsystems, ssys, ops = resolved_ops, resolved_ops)
 end
 
 "_max_100(t) = length(t) > 100 ? range(extrema(t)..., 100) : t"
 _max_100(t) = length(t) > 100 ? range(extrema(t)..., 100) : t
-
-"""
-    fuzz(op, p; N = 10, parameters = true, variables = true)
-
-"Fuzz" an operating point `op::Dict` by changing each non-zero value to an uncertain number with multiplicative uncertainty `p`, represented by `N` samples, i.e., `p = 0.1` means that the value is multiplied by a `N` numbers between 0.9 and 1.1.
-
-`parameters` and `variables` indicate whether to fuzz parameters and state variables, respectively.
-
-This function modifies all variables the same way. For more fine-grained control, load the `MonteCarloMeasurements` package and use the `Particles` type directly, followed by `MonteCarloMeasurements.particle_dict2dict_vec(op)`, i.e., the following makes `uncertain_var` uncertain with a 10% uncertainty:
-```julia
-using MonteCarloMeasurements
-op = ModelingToolkit.defaults(sys)
-op[uncertain_var] = op[uncertain_var] * Particles(10, Uniform(0.9, 1.1))
-ops = MonteCarloMeasurements.particle_dict2dict_vec(op)
-batch_ss(model, inputs, outputs, ops)
-```
-If you have more than one uncertain parameter, it's important to use the same number of particles for all of them (10 in the example above).
-
-To make use of this function in [`trajectory_ss`](@ref), pass something like
-```
-fuzzer = op -> ControlSystemsMTK.fuzz(op, 0.02; N=10)
-```
-to fuzz each operating point 10 times with a 2% uncertainty. The resulting number of operating points will increase by 10x.
-"""
-function fuzz(op, p; N=10, parameters = true, variables = true)
-    op = map(collect(keys(op))) do key
-        par = ModelingToolkit.isparameter(key)
-        val = op[key]
-        par && !parameters && return (key => val)
-        !par && !variables && return (key => val)
-        aval = abs(val)
-        uval = issymbolic(val) ? val : iszero(val) ? 0.0 : Particles(N, MonteCarloMeasurements.Uniform(val-p*aval, val+p*aval))
-        key => uval
-    end |> Dict
-    MonteCarloMeasurements.particle_dict2dict_vec(op)
-end
-
-MonteCarloMeasurements.vecindex(p::Symbolics.BasicSymbolic,i) = p
-issymbolic(x) = x isa Union{Symbolics.Num, Symbolics.BasicSymbolic}
 
 maybe_interp(interpolator, x, t) = allequal(x) ? x[1] : interpolator(x, t)
 
@@ -676,10 +601,10 @@ function GainScheduledStateSpace(systems, vt; interpolator, x = zeros(systems[1]
         description = "Scheduling variable of gain-scheduled statespace system $name",
     ]
     
-    @variables A(t)[1:nx, 1:nx] = systems[1].A
-    @variables B(t)[1:nx, 1:nu] = systems[1].B
-    @variables C(t)[1:ny, 1:nx] = systems[1].C
-    @variables D(t)[1:ny, 1:nu] = systems[1].D
+    @variables A(t)[1:nx, 1:nx] [guess=systems[1].A]
+    @variables B(t)[1:nx, 1:nu] [guess=systems[1].B]
+    @variables C(t)[1:ny, 1:nx] [guess=systems[1].C]
+    @variables D(t)[1:ny, 1:nu] [guess=systems[1].D]
     A,B,C,D = collect.((A,B,C,D))
 
     eqs = [
