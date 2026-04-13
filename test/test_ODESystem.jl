@@ -162,6 +162,8 @@ using ModelingToolkitStandardLibrary.Mechanical.Rotational
 using ModelingToolkitStandardLibrary.Blocks: Sine
 using ModelingToolkit: connect
 import ModelingToolkitStandardLibrary.Blocks
+Spring = Rotational.Spring
+Damper = Rotational.Damper
 t = Blocks.t
 
 # Parameters
