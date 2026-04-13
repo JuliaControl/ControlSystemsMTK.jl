@@ -516,7 +516,7 @@ end
 
 Linearize `sys` around the trajectory `sol` at times `t`. Returns a vector of `StateSpace` objects and the simplified system.
 
-Operating points are extracted from the solution automatically using [`ModelingToolkit.LinearizationOpPoint`](@ref).
+Operating points are extracted from the solution automatically using `ModelingToolkit.LinearizationOpPoint`.
 
 # Arguments:
 - `inputs`: A vector of variables or analysis points.
