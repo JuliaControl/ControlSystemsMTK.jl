@@ -178,7 +178,11 @@ model = SystemModel() |> complete
 ### Numeric linearization
 We can linearize this model numerically using `named_ss`, this produces a `NamedStateSpace{Continuous, Float64}`
 ```@example LINEAIZE_SYMBOLIC
-op = Dict(model.inertia1.flange_b.phi => 0.0, model.torque.tau.u => 0)
+op = Dict(
+    model.inertia1.flange_b.phi => 0.0,
+    model.inertia2.flange_a.phi => 0.0,
+    model.torque.tau.u => 0,
+)
 lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi]; op)
 ```
 ### Symbolic linearization
