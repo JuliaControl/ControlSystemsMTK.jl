@@ -523,19 +523,21 @@ Operating points are extracted from the solution automatically using `ModelingTo
 - `outputs`: A vector of variables or analysis points.
 - `sol`: An ODE solution object.
 - `t`: Time points along the solution trajectory at which to linearize. The returned array of `StateSpace` objects will be of the same length as `t`.
+- `op`: A `Dict` of additional operating-point values that are not available from `sol`. This is required when using `loop_openings`: opening a loop turns the opened signal into a parameter whose value is not implied by the solution, and it must be supplied here (typically set to `0`), e.g. `op = Dict(sys.opened_signal => 0)`. The values are merged into the solution-derived operating point at every time point.
 - `kwargs`: Are sent to the linearization functions (e.g., `loop_openings`).
 - `named`: If `true`, the returned systems will be of type `NamedStateSpace`, otherwise they will be of type `StateSpace`.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_input_derivatives = false, verbose = true, named = true, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), op = Dict(), allow_input_derivatives = false, verbose = true, named = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
 
     input_names = reduce(vcat, getproperty.(ap.outputs, :u) for ap in vcat(inputs))
     output_names = reduce(vcat, ap.input.u for ap in vcat(outputs))
 
-    # Use LinearizationOpPoint to let MTK extract operating points from the solution
-    op = ModelingToolkit.LinearizationOpPoint(sol, t)
-    lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op, allow_input_derivatives, kwargs...)
+    # Use LinearizationOpPoint to let MTK extract operating points from the solution.
+    # `op` supplies values not available from `sol` (e.g. loop-opening parameters).
+    oppoint = ModelingToolkit.LinearizationOpPoint(sol, t; op)
+    lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op = oppoint, allow_input_derivatives, kwargs...)
 
     named_linsystems = map(lins) do l
         if named
