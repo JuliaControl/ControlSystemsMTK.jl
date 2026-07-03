@@ -110,7 +110,7 @@ function RobustAndOptimalControl.named_ss(
             out
         end
     end
-    matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
+    matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
@@ -301,7 +301,7 @@ function named_sensitivity_function(
         end
     end
     nu = length(inputs)
-    matrices, ssys = fun(sys, inputs, args...; kwargs...)
+    matrices, ssys = fun(sys, inputs, args...; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
@@ -384,7 +384,7 @@ The second problem above, the ordering of the states, can be worked around using
 - `costs`: A vector of pairs.
 """
 function build_quadratic_cost_matrix(sys::System, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
-    matrices, ssys, extras = ModelingToolkit.linearize(sys, inputs, first.(costs); kwargs...)
+    matrices, ssys, extras = ModelingToolkit.linearize(sys, inputs, first.(costs); DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
     nx = length(x)
@@ -406,7 +406,7 @@ end
 function batch_linearize(sys, inputs, outputs, ops::AbstractVector{<:AbstractDict}; t = 0.0,
         allow_input_derivatives = false,
         kwargs...)
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     lins_ops = map(ops) do op
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
     end
@@ -552,7 +552,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), allow_inp
         ops = reduce(vcat, opsv)
         t = repeat(t, inner = length(ops) ÷ length(t))
     end
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...)#, initialization_abstol=1e-1, initialization_reltol=1e-1, kwargs...) # initializealg=ModelingToolkit.SciMLBase.NoInit()
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], DEFAULT_LINEARIZE_KWARGS..., kwargs...)#, initialization_abstol=1e-1, initialization_reltol=1e-1, kwargs...) # initializealg=ModelingToolkit.SciMLBase.NoInit()
     # Main.lin_fun = lin_fun
     # Main.op1 = ops[1]
     # Main.ops = ops 

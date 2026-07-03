@@ -35,6 +35,23 @@ export build_quadratic_cost_matrix
 
 export get_named_sensitivity, get_named_comp_sensitivity, get_named_looptransfer
 
+"""
+Default keyword arguments forwarded to ModelingToolkit's linearization (and through it to
+`mtkcompile`) by every linearization-based function in this package (`named_ss`,
+`get_named_sensitivity` and friends, `batch_ss`, `trajectory_ss`,
+`build_quadratic_cost_matrix`). `inline_linear_sccs` makes tearing solve linear
+strongly-connected components inline (symbolically for size ≤ `analytical_linear_scc_limit`)
+rather than through numerical linear-solve calls embedded in the generated code. This is
+required for correct linearization of models with large linear SCCs (e.g. multibody
+mechanisms). Keyword arguments passed by the caller take precedence, so pass
+`reassemble_alg = ModelingToolkit.StructuralTransformations.DefaultReassembleAlgorithm()` to
+restore the ModelingToolkit default.
+"""
+const DEFAULT_LINEARIZE_KWARGS = (;
+    reassemble_alg = ModelingToolkit.StructuralTransformations.DefaultReassembleAlgorithm(;
+        inline_linear_sccs = true, analytical_linear_scc_limit = 1),
+)
+
 include("ode_system.jl")
 # include("symbolic_optimization.jl")
 
