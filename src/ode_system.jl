@@ -114,8 +114,12 @@ function RobustAndOptimalControl.named_ss(
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
-        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        # Derivative column nu + i is the derivative of input i (see the MTK docs for
+        # `linearize` with `allow_input_derivatives = true`), so the pairing is positional.
+        # All-zero derivative columns contribute nothing and are included for simplicity;
+        # a pairing derived from the set of nonzero columns mispairs inputs when only a
+        # subset of the derivative columns is nonzero.
+        u2du = [i => i + nu for i in 1:nu] # This maps inputs to their derivatives
         lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance)
     else
         lsys = ss(matrices...)
@@ -154,8 +158,12 @@ function RobustAndOptimalControl.named_ss(
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
-        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        # Derivative column nu + i is the derivative of input i (see the MTK docs for
+        # `linearize` with `allow_input_derivatives = true`), so the pairing is positional.
+        # All-zero derivative columns contribute nothing and are included for simplicity;
+        # a pairing derived from the set of nonzero columns mispairs inputs when only a
+        # subset of the derivative columns is nonzero.
+        u2du = [i => i + nu for i in 1:nu] # This maps inputs to their derivatives
         lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance, verbose=false)
     else
         lsys = ss(matrices...)
@@ -307,8 +315,12 @@ function named_sensitivity_function(
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
-        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        # Derivative column nu + i is the derivative of input i (see the MTK docs for
+        # `linearize` with `allow_input_derivatives = true`), so the pairing is positional.
+        # All-zero derivative columns contribute nothing and are included for simplicity;
+        # a pairing derived from the set of nonzero columns mispairs inputs when only a
+        # subset of the derivative columns is nonzero.
+        u2du = [i => i + nu for i in 1:nu] # This maps inputs to their derivatives
         lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance)
     else
         lsys = ss(matrices...)
