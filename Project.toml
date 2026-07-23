@@ -1,11 +1,10 @@
 name = "ControlSystemsMTK"
 uuid = "687d7614-c7e5-45fc-bfc3-9ee385575c88"
-version = "2.7.0"
 authors = ["Fredrik Bagge Carlson"]
+version = "2.8.0"
 
 [deps]
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
-DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 ModelingToolkitBase = "7771a370-6774-4173-bd38-47e70ca0b839"
@@ -17,8 +16,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ControlSystemsBase = "1.0.1"
-DataInterpolations = "5, 6, 7, 8"
-ModelingToolkit = "11.7"
+ModelingToolkit = "11.36"
 ModelingToolkitStandardLibrary = "2"
 MonteCarloMeasurements = "1.1"
 RobustAndOptimalControl = "0.4.14"
@@ -28,13 +26,14 @@ julia = "1.10"
 
 [extras]
 ControlSystems = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
+DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 GenericLinearAlgebra = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
 OrdinaryDiffEqNonlinearSolve = "127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
 OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "ControlSystems", "GenericLinearAlgebra", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqNonlinearSolve"]
+test = ["Test", "ControlSystems", "DataInterpolations", "GenericLinearAlgebra", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqNonlinearSolve"]
 
 [sources]
 ModelingToolkit = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "master"}

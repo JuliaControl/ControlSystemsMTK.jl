@@ -110,12 +110,16 @@ function RobustAndOptimalControl.named_ss(
             out
         end
     end
-    matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; kwargs...)
+    matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
-        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        # Derivative column nu + i is the derivative of input i (see the MTK docs for
+        # `linearize` with `allow_input_derivatives = true`), so the pairing is positional.
+        # All-zero derivative columns contribute nothing and are included for simplicity;
+        # a pairing derived from the set of nonzero columns mispairs inputs when only a
+        # subset of the derivative columns is nonzero.
+        u2du = [i => i + nu for i in 1:nu] # This maps inputs to their derivatives
         lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance)
     else
         lsys = ss(matrices...)
@@ -154,8 +158,12 @@ function RobustAndOptimalControl.named_ss(
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
-        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        # Derivative column nu + i is the derivative of input i (see the MTK docs for
+        # `linearize` with `allow_input_derivatives = true`), so the pairing is positional.
+        # All-zero derivative columns contribute nothing and are included for simplicity;
+        # a pairing derived from the set of nonzero columns mispairs inputs when only a
+        # subset of the derivative columns is nonzero.
+        u2du = [i => i + nu for i in 1:nu] # This maps inputs to their derivatives
         lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance, verbose=false)
     else
         lsys = ss(matrices...)
@@ -301,14 +309,18 @@ function named_sensitivity_function(
         end
     end
     nu = length(inputs)
-    matrices, ssys, xpt = fun(sys, inputs, args...; kwargs...)
+    matrices, ssys, xpt = fun(sys, inputs, args...; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
     unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
-        duinds = findall(any(!iszero, eachcol(matrices.B[:, nu+1:end]))) .+ nu
-        u2du = (1:nu) .=> duinds # This maps inputs to their derivatives
+        # Derivative column nu + i is the derivative of input i (see the MTK docs for
+        # `linearize` with `allow_input_derivatives = true`), so the pairing is positional.
+        # All-zero derivative columns contribute nothing and are included for simplicity;
+        # a pairing derived from the set of nonzero columns mispairs inputs when only a
+        # subset of the derivative columns is nonzero.
+        u2du = [i => i + nu for i in 1:nu] # This maps inputs to their derivatives
         lsys = causal_simplification(matrices, u2du; descriptor, simple_infeigs, big, balance)
     else
         lsys = ss(matrices...)
@@ -388,7 +400,7 @@ The second problem above, the ordering of the states, can be worked around using
 - `costs`: A vector of pairs.
 """
 function build_quadratic_cost_matrix(sys::System, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
-    matrices, ssys, extras = ModelingToolkit.linearize(sys, inputs, first.(costs); kwargs...)
+    matrices, ssys, extras = ModelingToolkit.linearize(sys, inputs, first.(costs); DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
     nx = length(x)
@@ -410,7 +422,7 @@ end
 function batch_linearize(sys, inputs, outputs, ops::AbstractVector{<:AbstractDict}; t = 0.0,
         allow_input_derivatives = false,
         kwargs...)
-    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], kwargs...)
+    lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     lins_ops = map(ops) do op
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
     end
@@ -537,7 +549,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), op = Dict
     # Use LinearizationOpPoint to let MTK extract operating points from the solution.
     # `op` supplies values not available from `sol` (e.g. loop-opening parameters).
     oppoint = ModelingToolkit.LinearizationOpPoint(sol, t; op)
-    lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op = oppoint, allow_input_derivatives, kwargs...)
+    lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op = oppoint, allow_input_derivatives, DEFAULT_LINEARIZE_KWARGS..., kwargs...)
 
     named_linsystems = map(lins) do l
         if named
