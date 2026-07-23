@@ -15,5 +15,5 @@ SymbolicControlSystems = "886cb795-8fd3-4b11-92f6-8071e46f71c5"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
-ModelingToolkit = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "as/linearize-op"}
-ModelingToolkitBase = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "as/linearize-op", subdir = "lib/ModelingToolkitBase"}
+ModelingToolkit = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "master"}
+ModelingToolkitBase = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "master", subdir = "lib/ModelingToolkitBase"}
