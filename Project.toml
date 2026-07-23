@@ -17,6 +17,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 ControlSystemsBase = "1.0.1"
 ModelingToolkit = "11.36"
+ModelingToolkitBase = "1.56"
 ModelingToolkitStandardLibrary = "2"
 MonteCarloMeasurements = "1.1"
 RobustAndOptimalControl = "0.4.14"
