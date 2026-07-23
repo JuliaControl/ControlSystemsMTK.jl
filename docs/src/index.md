@@ -178,7 +178,11 @@ model = SystemModel() |> complete
 ### Numeric linearization
 We can linearize this model numerically using `named_ss`, this produces a `NamedStateSpace{Continuous, Float64}`
 ```@example LINEAIZE_SYMBOLIC
-op = Dict(model.inertia1.flange_b.phi => 0.0, model.torque.tau.u => 0)
+op = Dict(
+    model.inertia1.flange_b.phi => 0.0,
+    model.inertia2.flange_a.phi => 0.0,
+    model.torque.tau.u => 0,
+)
 lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi]; op)
 ```
 ### Symbolic linearization
@@ -192,7 +196,7 @@ symbolic_sys = ss(mats.A, mats.B, mats.C, mats.D)
 That's pretty cool, but even nicer is to generate some code for this symbolic system. Below, we use `build_function` to generate a function that takes a numeric vector `x` representing the values of the state, and a vector of parameters, and returns a `StaticStateSpace{Continuous, Float64}`. We pass the keyword argument `force_SA=true` to `build_function` to get an allocation-free function. 
 
 ```@example LINEAIZE_SYMBOLIC
-defs = ModelingToolkit.defaults(simplified_sys)
+defs = ModelingToolkit.initial_conditions(simplified_sys)
 defs = merge(Dict(unknowns(model) .=> 0), defs)
 x = ModelingToolkit.get_u0(simplified_sys, defs) # Extract the default state and parameter values
 pars = ModelingToolkit.get_p(simplified_sys, defs, split=false)

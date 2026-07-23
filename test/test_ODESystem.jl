@@ -162,6 +162,8 @@ using ModelingToolkitStandardLibrary.Mechanical.Rotational
 using ModelingToolkitStandardLibrary.Blocks: Sine
 using ModelingToolkit: connect
 import ModelingToolkitStandardLibrary.Blocks
+Spring = Rotational.Spring
+Damper = Rotational.Damper
 t = Blocks.t
 
 # Parameters
@@ -195,7 +197,11 @@ end
 
 model = SystemModel() |> complete
 
-op = Dict(model.inertia1.flange_b.phi => 0.0, model.torque.tau.u => 0)
+op = Dict(
+    model.inertia1.flange_b.phi => 0.0,
+    model.inertia2.flange_a.phi => 0.0,
+    model.torque.tau.u => 0,
+)
 lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi]; op)
 @test -1000 ∈ lsys.A
 @test -10 ∈ lsys.A
