@@ -50,10 +50,10 @@ With state  names: x1 x2 x3 x4
      input  names: torque
      output names: motor_angle load_angle
 </code></pre><p>When we convert this system to a <code>System</code>, we get a system with connectors <code>P.torque</code> and <code>P.motor_angle</code>, in addition to the standard connectors <code>P.input</code> and <code>P.output</code>:</p><pre><code class="language-julia hljs">@named P_ode = System(P)</code></pre><p class="math-container">\[ \begin{align}
-\frac{\mathrm{d} x\_{1}\left( t \right)}{\mathrm{d}t} &amp;= x\_{2}\left( t \right) \\
-\frac{\mathrm{d} x\_{2}\left( t \right)}{\mathrm{d}t} &amp;=  - 100 x\_{1}\left( t \right) - 2 x\_{2}\left( t \right) + 100 x\_{3}\left( t \right) + x\_{4}\left( t \right) + \mathtt{input.u}\left( t \right) \\
-\frac{\mathrm{d} x\_{3}\left( t \right)}{\mathrm{d}t} &amp;= x\_{4}\left( t \right) \\
-\frac{\mathrm{d} x\_{4}\left( t \right)}{\mathrm{d}t} &amp;= 100 x\_{1}\left( t \right) + x\_{2}\left( t \right) - 100 x\_{3}\left( t \right) - 2 x\_{4}\left( t \right) \\
+\frac{\mathrm{d} ~ x\_{1}\left( t \right)}{\mathrm{d}t} &amp;= x\_{2}\left( t \right) \\
+\frac{\mathrm{d} ~ x\_{2}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{input.u}\left( t \right) - 100 ~ x\_{1}\left( t \right) - 2 ~ x\_{2}\left( t \right) + 100 ~ x\_{3}\left( t \right) + x\_{4}\left( t \right) \\
+\frac{\mathrm{d} ~ x\_{3}\left( t \right)}{\mathrm{d}t} &amp;= x\_{4}\left( t \right) \\
+\frac{\mathrm{d} ~ x\_{4}\left( t \right)}{\mathrm{d}t} &amp;= 100 ~ x\_{1}\left( t \right) + x\_{2}\left( t \right) - 100 ~ x\_{3}\left( t \right) - 2 ~ x\_{4}\left( t \right) \\
 \mathtt{output.u}\_{1}\left( t \right) &amp;= x\_{1}\left( t \right) \\
 \mathtt{output.u}\_{2}\left( t \right) &amp;= x\_{3}\left( t \right) \\
 \mathtt{torque.u}\left( t \right) &amp;= \mathtt{input.u}\left( t \right) \\
@@ -132,36 +132,40 @@ model = SystemModel() |&gt; complete</code></pre><p class="math-container">\[ \b
 \mathtt{torque.flange.tau}\left( t \right) &amp;=  - \mathtt{torque.tau.u}\left( t \right) \\
 \mathtt{inertia1.phi}\left( t \right) &amp;= \mathtt{inertia1.flange\_a.phi}\left( t \right) \\
 \mathtt{inertia1.phi}\left( t \right) &amp;= \mathtt{inertia1.flange\_b.phi}\left( t \right) \\
-\frac{\mathrm{d} \mathtt{inertia1.phi}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia1.w}\left( t \right) \\
-\frac{\mathrm{d} \mathtt{inertia1.w}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia1.a}\left( t \right) \\
-\mathtt{inertia1.J} \mathtt{inertia1.a}\left( t \right) &amp;= \mathtt{inertia1.flange\_a.tau}\left( t \right) + \mathtt{inertia1.flange\_b.tau}\left( t \right) \\
+\frac{\mathrm{d} ~ \mathtt{inertia1.phi}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia1.w}\left( t \right) \\
+\frac{\mathrm{d} ~ \mathtt{inertia1.w}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia1.a}\left( t \right) \\
+\mathtt{inertia1.J} ~ \mathtt{inertia1.a}\left( t \right) &amp;= \mathtt{inertia1.flange\_a.tau}\left( t \right) + \mathtt{inertia1.flange\_b.tau}\left( t \right) \\
 \mathtt{inertia2.phi}\left( t \right) &amp;= \mathtt{inertia2.flange\_a.phi}\left( t \right) \\
 \mathtt{inertia2.phi}\left( t \right) &amp;= \mathtt{inertia2.flange\_b.phi}\left( t \right) \\
-\frac{\mathrm{d} \mathtt{inertia2.phi}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia2.w}\left( t \right) \\
-\frac{\mathrm{d} \mathtt{inertia2.w}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia2.a}\left( t \right) \\
-\mathtt{inertia2.J} \mathtt{inertia2.a}\left( t \right) &amp;= \mathtt{inertia2.flange\_b.tau}\left( t \right) + \mathtt{inertia2.flange\_a.tau}\left( t \right) \\
-\mathtt{spring.phi\_rel}\left( t \right) &amp;= \mathtt{spring.flange\_b.phi}\left( t \right) - \mathtt{spring.flange\_a.phi}\left( t \right) \\
+\frac{\mathrm{d} ~ \mathtt{inertia2.phi}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia2.w}\left( t \right) \\
+\frac{\mathrm{d} ~ \mathtt{inertia2.w}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{inertia2.a}\left( t \right) \\
+\mathtt{inertia2.J} ~ \mathtt{inertia2.a}\left( t \right) &amp;= \mathtt{inertia2.flange\_a.tau}\left( t \right) + \mathtt{inertia2.flange\_b.tau}\left( t \right) \\
+\mathtt{spring.phi\_rel}\left( t \right) &amp;=  - \mathtt{spring.flange\_a.phi}\left( t \right) + \mathtt{spring.flange\_b.phi}\left( t \right) \\
 \mathtt{spring.flange\_b.tau}\left( t \right) &amp;= \mathtt{spring.tau}\left( t \right) \\
 \mathtt{spring.flange\_a.tau}\left( t \right) &amp;=  - \mathtt{spring.tau}\left( t \right) \\
-\mathtt{spring.tau}\left( t \right) &amp;= \mathtt{spring.c} \left(  - \mathtt{spring.phi\_rel0} + \mathtt{spring.phi\_rel}\left( t \right) \right) \\
+\mathtt{spring.tau}\left( t \right) &amp;= \mathtt{spring.c} ~ \left( \mathtt{spring.phi\_rel}\left( t \right) - \mathtt{spring.phi\_rel0} \right) \\
 \mathtt{damper.phi\_rel}\left( t \right) &amp;=  - \mathtt{damper.flange\_a.phi}\left( t \right) + \mathtt{damper.flange\_b.phi}\left( t \right) \\
-\frac{\mathrm{d} \mathtt{damper.phi\_rel}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{damper.w\_rel}\left( t \right) \\
-\frac{\mathrm{d} \mathtt{damper.w\_rel}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{damper.a\_rel}\left( t \right) \\
+\frac{\mathrm{d} ~ \mathtt{damper.phi\_rel}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{damper.w\_rel}\left( t \right) \\
+\frac{\mathrm{d} ~ \mathtt{damper.w\_rel}\left( t \right)}{\mathrm{d}t} &amp;= \mathtt{damper.a\_rel}\left( t \right) \\
 \mathtt{damper.flange\_b.tau}\left( t \right) &amp;= \mathtt{damper.tau}\left( t \right) \\
 \mathtt{damper.flange\_a.tau}\left( t \right) &amp;=  - \mathtt{damper.tau}\left( t \right) \\
-\mathtt{damper.tau}\left( t \right) &amp;= \mathtt{damper.d} \mathtt{damper.w\_rel}\left( t \right) \\
+\mathtt{damper.tau}\left( t \right) &amp;= \mathtt{damper.d} ~ \mathtt{damper.w\_rel}\left( t \right) \\
 \mathtt{torque.flange.phi}\left( t \right) &amp;= \mathtt{inertia1.flange\_a.phi}\left( t \right) \\
-0 &amp;= \mathtt{torque.flange.tau}\left( t \right) + \mathtt{inertia1.flange\_a.tau}\left( t \right) \\
+0 &amp;= \mathtt{inertia1.flange\_a.tau}\left( t \right) + \mathtt{torque.flange.tau}\left( t \right) \\
 \mathtt{inertia1.flange\_b.phi}\left( t \right) &amp;= \mathtt{spring.flange\_a.phi}\left( t \right) \\
 \mathtt{inertia1.flange\_b.phi}\left( t \right) &amp;= \mathtt{damper.flange\_a.phi}\left( t \right) \\
-0 &amp;= \mathtt{damper.flange\_a.tau}\left( t \right) + \mathtt{spring.flange\_a.tau}\left( t \right) + \mathtt{inertia1.flange\_b.tau}\left( t \right) \\
+0 &amp;= \mathtt{damper.flange\_a.tau}\left( t \right) + \mathtt{inertia1.flange\_b.tau}\left( t \right) + \mathtt{spring.flange\_a.tau}\left( t \right) \\
 \mathtt{inertia2.flange\_a.phi}\left( t \right) &amp;= \mathtt{spring.flange\_b.phi}\left( t \right) \\
 \mathtt{inertia2.flange\_a.phi}\left( t \right) &amp;= \mathtt{damper.flange\_b.phi}\left( t \right) \\
-0 &amp;= \mathtt{damper.flange\_b.tau}\left( t \right) + \mathtt{spring.flange\_b.tau}\left( t \right) + \mathtt{inertia2.flange\_a.tau}\left( t \right) \\
+0 &amp;= \mathtt{damper.flange\_b.tau}\left( t \right) + \mathtt{inertia2.flange\_a.tau}\left( t \right) + \mathtt{spring.flange\_b.tau}\left( t \right) \\
 \mathtt{inertia2.flange\_b.phi}\left( t \right) &amp;= \mathtt{sens.flange.phi}\left( t \right) \\
 0 &amp;= \mathtt{inertia2.flange\_b.tau}\left( t \right) + \mathtt{sens.flange.tau}\left( t \right)
 \end{align}
- \]</p><h3 id="Numeric-linearization"><a class="docs-heading-anchor" href="#Numeric-linearization">Numeric linearization</a><a id="Numeric-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Numeric-linearization" title="Permalink"></a></h3><p>We can linearize this model numerically using <code>named_ss</code>, this produces a <code>NamedStateSpace{Continuous, Float64}</code></p><pre><code class="language-julia hljs">op = Dict(model.inertia1.flange_b.phi =&gt; 0.0, model.torque.tau.u =&gt; 0)
+ \]</p><h3 id="Numeric-linearization"><a class="docs-heading-anchor" href="#Numeric-linearization">Numeric linearization</a><a id="Numeric-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Numeric-linearization" title="Permalink"></a></h3><p>We can linearize this model numerically using <code>named_ss</code>, this produces a <code>NamedStateSpace{Continuous, Float64}</code></p><pre><code class="language-julia hljs">op = Dict(
+    model.inertia1.flange_b.phi =&gt; 0.0,
+    model.inertia2.flange_a.phi =&gt; 0.0,
+    model.torque.tau.u =&gt; 0,
+)
 lsys = named_ss(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi]; op)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">model: NamedStateSpace{Continuous, Float64}
 A = 
      0.0      0.0    1.0    0.0
@@ -181,17 +185,17 @@ D =
  0.0
 
 Continuous-time state-space model
-With state  names: inertia2₊phi(t) inertia1₊phi(t) inertia2₊w(t) inertia1₊w(t)
+With state  names: damper₊flange_b₊phi(t) inertia1₊phi(t) inertia2₊w(t) inertia1₊w(t)
      input  names: torque₊tau₊u(t)
      output names: inertia1₊phi(t) inertia2₊phi(t)
 Operating point: x = [0.0, 0.0, 0.0, 0.0], u = [0.0]
 </code></pre><h3 id="Symbolic-linearization"><a class="docs-heading-anchor" href="#Symbolic-linearization">Symbolic linearization</a><a id="Symbolic-linearization-1"></a><a class="docs-heading-anchor-permalink" href="#Symbolic-linearization" title="Permalink"></a></h3><p>If we instead call <code>linearize_symbolic</code> and pass the jacobians into <code>ss</code>, we get a <code>StateSpace{Continuous, Num}</code></p><pre><code class="language-julia hljs">mats, simplified_sys = ModelingToolkit.linearize_symbolic(model, [model.torque.tau.u], [model.inertia1.phi, model.inertia2.phi])
-symbolic_sys = ss(mats.A, mats.B, mats.C, mats.D)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">StateSpace{Continuous, Num}
+symbolic_sys = ss(mats.A, mats.B, mats.C, mats.D)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">StateSpace{Continuous, Any}
 A = 
-                        0                         0                         1                         0
-                        0                         0                         0                         1
- (-spring₊c) / inertia2₊J     spring₊c / inertia2₊J  (-damper₊d) / inertia2₊J     damper₊d / inertia2₊J
-    spring₊c / inertia1₊J  (-spring₊c) / inertia1₊J     damper₊d / inertia1₊J  (-damper₊d) / inertia1₊J
+ 0                         0                         1                         0
+ 0                         0                         0                         1
+ (-spring₊c) / inertia2₊J  spring₊c / inertia2₊J     (-damper₊d) / inertia2₊J  damper₊d / inertia2₊J
+ spring₊c / inertia1₊J     (-spring₊c) / inertia1₊J  damper₊d / inertia1₊J     (-damper₊d) / inertia1₊J
 B = 
               0
               0
@@ -204,7 +208,7 @@ D =
  0
  0
 
-Continuous-time state-space model</code></pre><h3 id="Code-generation"><a class="docs-heading-anchor" href="#Code-generation">Code generation</a><a id="Code-generation-1"></a><a class="docs-heading-anchor-permalink" href="#Code-generation" title="Permalink"></a></h3><p>That&#39;s pretty cool, but even nicer is to generate some code for this symbolic system. Below, we use <code>build_function</code> to generate a function that takes a numeric vector <code>x</code> representing the values of the state, and a vector of parameters, and returns a <code>StaticStateSpace{Continuous, Float64}</code>. We pass the keyword argument <code>force_SA=true</code> to <code>build_function</code> to get an allocation-free function. </p><pre><code class="language-julia hljs">defs = ModelingToolkit.defaults(simplified_sys)
+Continuous-time state-space model</code></pre><h3 id="Code-generation"><a class="docs-heading-anchor" href="#Code-generation">Code generation</a><a id="Code-generation-1"></a><a class="docs-heading-anchor-permalink" href="#Code-generation" title="Permalink"></a></h3><p>That&#39;s pretty cool, but even nicer is to generate some code for this symbolic system. Below, we use <code>build_function</code> to generate a function that takes a numeric vector <code>x</code> representing the values of the state, and a vector of parameters, and returns a <code>StaticStateSpace{Continuous, Float64}</code>. We pass the keyword argument <code>force_SA=true</code> to <code>build_function</code> to get an allocation-free function. </p><pre><code class="language-julia hljs">defs = ModelingToolkit.initial_conditions(simplified_sys)
 defs = merge(Dict(unknowns(model) .=&gt; 0), defs)
 x = ModelingToolkit.get_u0(simplified_sys, defs) # Extract the default state and parameter values
 pars = ModelingToolkit.get_p(simplified_sys, defs, split=false)
@@ -315,4 +319,4 @@ s \begin{bmatrix}I &amp; -\bar B \\ 0 &amp; 0 \end{bmatrix} &amp;=
 \begin{bmatrix}X \\ X_u \end{bmatrix} + 
 \begin{bmatrix} B \\ I_u\end{bmatrix} U \\
 sE &amp;= A_e x_e + B_e u
-\end{aligned}\]</p><p>where <span>$X_u$</span> is a new algebraic state variable and <span>$I_u$</span> is a selector matrix that picks out the differentiated inputs appearing in <span>$\dot u$</span> (if all inputs appear, <span>$I_u = I$</span>).</p><p>This model may be converted to a proper statespace model (if the system is indeed proper) using <code>DescriptorSystems.dss2ss</code>. All of this is handled automatically by <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a>.</p><p><strong>Summary</strong>: If you get the error message</p><blockquote><p>Input derivatives appeared in expressions (-g<em>z\g</em>u != 0)</p></blockquote><p>Switch from calling <code>linearize</code> to calling <code>named_ss</code> with exactly the same input arguments, and then pass the argument <code>allow_input_derivatives = true</code> to <code>named_ss</code>.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="batch_linearization/">Batch linearization and gain scheduling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 4 December 2025 10:39">Thursday 4 December 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+\end{aligned}\]</p><p>where <span>$X_u$</span> is a new algebraic state variable and <span>$I_u$</span> is a selector matrix that picks out the differentiated inputs appearing in <span>$\dot u$</span> (if all inputs appear, <span>$I_u = I$</span>).</p><p>This model may be converted to a proper statespace model (if the system is indeed proper) using <code>DescriptorSystems.dss2ss</code>. All of this is handled automatically by <a href="api/#RobustAndOptimalControl.named_ss"><code>named_ss</code></a>.</p><p><strong>Summary</strong>: If you get the error message</p><blockquote><p>Input derivatives appeared in expressions (-g<em>z\g</em>u != 0)</p></blockquote><p>Switch from calling <code>linearize</code> to calling <code>named_ss</code> with exactly the same input arguments, and then pass the argument <code>allow_input_derivatives = true</code> to <code>named_ss</code>.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="batch_linearization/">Batch linearization and gain scheduling »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 23 July 2026 12:51">Thursday 23 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
