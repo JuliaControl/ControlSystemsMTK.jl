@@ -54,6 +54,12 @@ P02_named = named_ss(P, [input.u], [output.u]; op)
 P02 = ss(P02_named)
 @test P02 == P0 # verify that we get back what we started with
 
+# named_ss from a precompiled LinearizationFunction (hot path)
+lin_fun, sslin = ModelingToolkit.linearization_function(P, [input.u], [output.u]; op)
+P02_linfun = named_ss(sslin, lin_fun, [output.u]; op)
+@test P02_linfun.u == [Symbol("input₊u(t)")]
+@test ss(P02_linfun) == P0
+
 # same for controller
 x = unknowns(C)
 @nonamespace C02 = named_ss(C, [C.input], [C.output]; op)

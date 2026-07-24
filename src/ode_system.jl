@@ -153,7 +153,10 @@ function RobustAndOptimalControl.named_ss(
 )
     ssys = sys
     matrices, xpt = ModelingToolkit.linearize(sys, linfun; kwargs...)
-    inputs = linfun.inputs
+    # ModelingToolkit 11.36 removed the `inputs` field from LinearizationFunction;
+    # the input variables are recovered from the simplified system instead, which
+    # is what the operating-point extraction below already relies on.
+    inputs = ModelingToolkit.inputs(ssys)
     nu = length(inputs)
     unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
