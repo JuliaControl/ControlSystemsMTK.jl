@@ -79,3 +79,11 @@ op = Dict(u.u => 0)
 Ps2, ssys = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=time)
 @test length(Ps2) == length(time)
 # bodeplot(Ps2)
+
+## Loop openings: opened signals default to their value in the loop-closed solution
+controllers, _ = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=time, loop_openings=[closed_loop.y])
+@test length(controllers) == length(time)
+# The default is equivalent to explicitly mapping the opened signal to its driving signal
+controllers2, _ = trajectory_ss(closed_loop, closed_loop.r, closed_loop.y, sol; t=time, loop_openings=[closed_loop.y], op=Dict(fb.input2.u => duffing.y.u))
+w_test = exp10.(LinRange(-2, 2, 30))
+@test all(isapprox(freqresp(c1, w_test), freqresp(c2, w_test), rtol=1e-10) for (c1, c2) in zip(controllers, controllers2))
