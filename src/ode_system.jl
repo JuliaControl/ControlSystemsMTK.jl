@@ -538,11 +538,12 @@ Operating points are extracted from the solution automatically using `ModelingTo
 - `outputs`: A vector of variables or analysis points.
 - `sol`: An ODE solution object.
 - `t`: Time points along the solution trajectory at which to linearize. The returned array of `StateSpace` objects will be of the same length as `t`.
-- `op`: A `Dict` of additional operating-point values that are not available from `sol`. This is required when using `loop_openings`: opening a loop turns the opened signal into a parameter whose value is not implied by the solution, and it must be supplied here (typically set to `0`), e.g. `op = Dict(sys.opened_signal => 0)`. The values are merged into the solution-derived operating point at every time point.
-- `kwargs`: Are sent to the linearization functions (e.g., `loop_openings`).
+- `loop_openings`: A list of analysis points whose connections are broken during the linearization. Each opened signal becomes a parameter that ModelingToolkit holds at the value it has in the loop-closed solution `sol` at each time point, such that the linearization is performed around the trajectory also for the opened signals. To linearize around some other value for an opened signal, supply it through `op`.
+- `op`: A `Dict` of operating-point values overriding those obtained from `sol`, e.g. `op = Dict(sys.opened_signal => 0)`. Symbolic values are resolved from `sol` at every time point. The values are merged into the solution-derived operating point at every time point.
+- `kwargs`: Are sent to the linearization functions.
 - `named`: If `true`, the returned systems will be of type `NamedStateSpace`, otherwise they will be of type `StateSpace`.
 """
-function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), op = Dict(), allow_input_derivatives = false, verbose = true, named = true, kwargs...)
+function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), op = Dict(), loop_openings = [], allow_input_derivatives = false, verbose = true, named = true, kwargs...)
     maximum(t) > maximum(sol.t) && @warn("The maximum time in `t`: $(maximum(t)), is larger than the maximum time in `sol.t`: $(maximum(sol.t)).")
     minimum(t) < minimum(sol.t) && @warn("The minimum time in `t`: $(minimum(t)), is smaller than the minimum time in `sol.t`: $(minimum(sol.t)).")
 
@@ -550,9 +551,10 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), op = Dict
     output_names = reduce(vcat, ap.input.u for ap in vcat(outputs))
 
     # Use LinearizationOpPoint to let MTK extract operating points from the solution.
-    # `op` supplies values not available from `sol` (e.g. loop-opening parameters).
+    # `op` overrides values from `sol`; signals opened by `loop_openings` are held at their
+    # values in the loop-closed solution unless `op` specifies them.
     oppoint = ModelingToolkit.LinearizationOpPoint(sol, t; op)
-    lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op = oppoint, allow_input_derivatives, DEFAULT_LINEARIZE_KWARGS..., kwargs...)
+    lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op = oppoint, allow_input_derivatives, loop_openings, DEFAULT_LINEARIZE_KWARGS..., kwargs...)
 
     named_linsystems = map(lins) do l
         if named

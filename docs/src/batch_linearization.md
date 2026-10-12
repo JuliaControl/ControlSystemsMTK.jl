@@ -167,7 +167,7 @@ Not how the closed-loop system changes very little along the trajectory, this is
 Internally, [`trajectory_ss`](@ref) works very much the same as [`batch_ss`](@ref), but constructs operating points automatically along the trajectory using `ModelingToolkit.LinearizationOpPoint`. The operating points are extracted from the differential states and parameters of the solution. We specify the inputs and outputs as analysis points to properly define the linearization interface.
 
 
-We can replicate the figure above by linearizing the plant and the controller individually, by providing the `loop_openings` argument. Opening a loop breaks the corresponding connection and turns the opened signal into a free input. Its operating-point value is not implied by the solution, so it must be supplied explicitly through the `op` argument (a `Dict` mapping the opened signal to its value); here we hold each opened signal at `0`. When linearizing the plant, we disconnect the controller output by passing `loop_openings=[closed_loop.u]`, and when linearizing the controller, we have various options for disconnecting the plant:
+We can replicate the figure above by linearizing the plant and the controller individually, by providing the `loop_openings` argument. Opening a loop breaks the corresponding connection, and the disconnected signal becomes a parameter of the linearized system. A loop opening changes the input-output structure of the linearization, not the operating point: ModelingToolkit holds a disconnected signal at the value it has in the loop-closed solution at each time point, i.e., at the value of the signal that drove it. All parts are thus linearized at the same operating point as the closed loop, which is required for their linearizations to combine into the linearization of the closed loop. To linearize around some other value of a disconnected signal, pass it through the `op` argument, e.g., `op = Dict(opened_signal => 0)`. When linearizing the plant, we disconnect the controller output by passing `loop_openings=[closed_loop.u]`, and when linearizing the controller, we have various options for disconnecting the plant:
 - Break the connection from plant output to controller input by passing `loop_openings=[closed_loop.y]`
 - Break the connection between the controller and the plant input by passing `loop_openings=[closed_loop.u]`
 - Break the connection `y` as well as the scheduling variable `v` (which is another form of feedback) by passing `loop_openings=[closed_loop.y, closed_loop.v]`
@@ -176,39 +176,54 @@ We will explore these options below, starting with the first option, breaking th
 ```@example BATCHLIN
 kwargs = (; adaptive=false, legend=false)
 plants, _ = trajectory_ss(closed_loop, closed_loop.u, closed_loop.y, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.u]);
-controllersy, ssy, ops3, resolved_ops3 = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.y], op=Dict(fb.input2.u => 0));
+controllersy, ssy, ops3, resolved_ops3 = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.y]);
 
 closed_loopsy = feedback.(plants .* controllersy)
 bodeplot(closed_loopsy, w; title="Loop open at y", kwargs...)
 ```
-When we open the loop at `u` instead, the plant input is held at `0` while the scheduling variable `v` remains connected, so the controller is linearized at the scheduling value along the trajectory and is fully isolated from the plant:
+With the loop opened only at `y`, the scheduling feedback through `v` remains in place, so the controller linearizations contain the path from the controller output through the plant to the scheduling input. Closing the loop at `y` thus reproduces the linearization of the closed loop exactly:
 ```@example BATCHLIN
-controllersu, ssu = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.u], op=Dict(duffing.u.u => 0));
+using Test
+@test all(isapprox(freqresp(cy, w), freqresp(P2, w), rtol=1e-6) for (cy, P2) in zip(closed_loopsy, Ps2))
+```
+When we open the loop at `u` instead, the scheduling variable `v` remains connected, so the controller is linearized at the scheduling value along the trajectory and is fully isolated from the plant:
+```@example BATCHLIN
+controllersu, ssu = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.u]);
 
 closed_loopsu = feedback.(plants .* controllersu)
 bodeplot(closed_loopsu, w; title="Loop open at u", kwargs...)
 ```
-If we instead break the scheduling feedback `v` in addition to `y` (holding both at `0`), the controller is isolated from the plant but its scheduling is pinned to `0` rather than following the trajectory, so the result differs from opening at `u`:
+These controllers do not contain the dependence of the controller output on the scheduling variable, i.e., the derivative of the gain-scheduled controller with respect to `v`, which is nonzero whenever the controller is not at an equilibrium of the scheduled family. The loop `feedback(plant * controller)` omits this path, so the result differs from the linearization of the closed loop along the trajectory.
+
+We may also break the scheduling feedback `v` in addition to `y`. Since the disconnected signals keep their values in the loop-closed solution, the controller is scheduled along the trajectory also in this case, and the result coincides with opening at `u`:
 ```@example BATCHLIN
-controllersv, ssv = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.y, closed_loop.v], op=Dict(fb.input2.u => 0, Cgs.scheduling_input.u => 0));
+controllersv, ssv = trajectory_ss(closed_loop, closed_loop.r, closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.y, closed_loop.v]);
 
 closed_loopsv = feedback.(plants .* controllersv)
 bodeplot(closed_loopsv, w; title="Loop open at v and y", kwargs...)
 ```
+```@example BATCHLIN
+@test all(isapprox(freqresp(cv, w), freqresp(cu, w), rtol=1e-6) for (cv, cu) in zip(controllersv, controllersu))
+```
 
-We have thus far treated the controller as a SISO system, but we could also view it as a system with two inputs, the measurement feedback and the scheduling feedback. For completeness, we show below how to derive the corresponding MIMO systems
+We have thus far treated the controller as a SISO system, but we could also view it as a system with two inputs, the reference and the scheduling feedback, and the plant as a system with the two outputs `y` and `v`. The measurement `y` enters the controller through the error `r - y`, i.e., with a negative sign, whereas the scheduling variable `v` enters with a positive sign. With ``C_r`` and ``C_v`` denoting the transfer functions of the controller from `r` and `v` to `u`, the controller output is ``u = C_r r - (C_r - C_v) y``, and the transfer function from `r` to `y` is ``P C_r / (1 + P (C_r - C_v))``:
 
 ```@example BATCHLIN
 plants_mimo, _ = trajectory_ss(closed_loop, closed_loop.u, [closed_loop.y, closed_loop.v], sol; t=timepoints, verbose=true, loop_openings=[closed_loop.u]);
-controllers_mimo, ssm = trajectory_ss(closed_loop, [closed_loop.r, closed_loop.v], closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.u], op=Dict(duffing.u.u => 0));
+controllers_mimo, ssm = trajectory_ss(closed_loop, [closed_loop.r, closed_loop.v], closed_loop.u, sol; t=timepoints, verbose=true, loop_openings=[closed_loop.u]);
 
-closed_loops_mimo = feedback.(controllers_mimo .* plants_mimo) # Look at complementary sensitivity function in the input, since this is a SISO system
-bodeplot(closed_loops_mimo, w; title="Loop open at MIMO", kwargs...)
+closed_loops_mimo = map(controllers_mimo, plants_mimo) do C, P
+    C, P = ss(C), ss(P)
+    feedback(P[1, 1], C[1, 1] - C[1, 2]) * C[1, 1]
+end
+bodeplot(closed_loops_mimo, w; title="Loop open at u, MIMO controller", kwargs...)
+```
+Since the two-input controller contains the scheduling path, this also reproduces the linearization of the closed loop:
+```@example BATCHLIN
+@test all(isapprox(freqresp(cm, w), freqresp(P2, w), rtol=1e-6) for (cm, P2) in zip(closed_loops_mimo, Ps2))
 ```
 
-
-
-Why are the results different depending on where we open the loop? We can understand the difference by comparing the Bode plots of the controllers. 
+Why are the results different depending on where we open the loop? We can understand the difference by comparing the Bode plots of the controllers.
 
 ```@example BATCHLIN
 plot(
@@ -218,26 +233,21 @@ plot(
     bodeplot(controllersv, w, legend=false, plotphase=false, title="Loop open at v and y"),
 )
 ```
-Opening at `u` keeps the scheduling connection `v` intact, so we obtain the gain-scheduled controller evaluated at the scheduling value along the trajectory. Opening additionally at `v` and holding it at `0` instead pins the scheduling to `0`, which is why "Loop open at v and y" differs from "Loop open at u".
-
-If we only open at `y`, the scheduling feedback through `v` remains in place, so the controller linearizations _still contain the closed loop through the scheduling connection_ `v`. We can verify this by looking at what variables are present in the input-output map
+Opening at `u`, or at `v` and `y`, yields the gain-scheduled controller evaluated at the scheduling value along the trajectory. If we only open at `y`, the controller linearizations _still contain the closed loop through the scheduling connection_ `v`. We can verify this by looking at what variables are present in the input-output map
 ```@example BATCHLIN
 sminreal(controllersy[end]).x
 ```
-notice how the state of the plant is included in the controller, this is an indication that we didn't fully isolate the controller during the linearizaiton. If we do the same thing for the controller with the loop opened at `u`, we see that the state of the plant is not included in the controller:
+notice how the state of the plant is included in the controller, this is an indication that the controller is not isolated from the plant. If we do the same thing for the controller with the loop opened at `u`, we see that the state of the plant is not included in the controller:
 ```@example BATCHLIN
 sminreal(controllersu[end]).x
 ```
 Opening at `u` thus yields a controller with fewer states than opening only at `y`, since the latter remains coupled to the plant through the scheduling feedback:
 ```@example BATCHLIN
-using Test
 @test sminreal(controllersu[end]).nx < sminreal(controllersy[end]).nx
 ```
-The call to `sminreal` is important here, it removes the states that are not needed to represent the input-output map of the system. The state of the full model, including the plant state, is present in the linearization before this call. 
+The call to `sminreal` is important here, it removes the states that are not needed to represent the input-output map of the system. The state of the full model, including the plant state, is present in the linearization before this call.
 
-
-
-The easiest way to ensure that the controller is properly disconnected from the plant while taking into account the different scheduling along the trajectory is thus to break at `u`.
+The choice of loop opening thus depends on the purpose of the analysis. To obtain the controller itself, e.g., for comparison with the designed controllers, open the loop at `u`. To reconstruct the closed loop from the plant and the controller, the scheduling feedback must be retained, either by opening the loop only at `y`, or by treating `v` as an additional input of the controller.
 
 ## Summary
 We have seen how to

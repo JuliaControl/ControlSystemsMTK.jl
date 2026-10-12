@@ -1,7 +1,7 @@
 name = "ControlSystemsMTK"
 uuid = "687d7614-c7e5-45fc-bfc3-9ee385575c88"
 authors = ["Fredrik Bagge Carlson"]
-version = "2.8.1"
+version = "2.9.0"
 
 [deps]
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
@@ -37,5 +37,5 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 test = ["Test", "ControlSystems", "DataInterpolations", "GenericLinearAlgebra", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqNonlinearSolve"]
 
 [sources]
-ModelingToolkit = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "master"}
-ModelingToolkitBase = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "master", subdir = "lib/ModelingToolkitBase"}
+ModelingToolkit = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "bagge/loop-opening-initial-conditions"}
+ModelingToolkitBase = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "bagge/loop-opening-initial-conditions", subdir = "lib/ModelingToolkitBase"}
