@@ -58,6 +58,39 @@ end
 
 symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
 
+# Number of scalar channels of the signal `x`, a variable or an analysis point (an
+# `AnalysisPoint` or its `Symbol` name) of `sys`. The width of an analysis point is the width
+# of the variable that drives it.
+function signal_width(sys, x)
+    if x isa Union{Symbol, AnalysisPoint}
+        ap = only(ModelingToolkit.canonicalize_ap(sys, x))
+        ap isa Symbol && (ap = AnalysisPoint(ap))
+        _, (x,) = ModelingToolkit.apply_transformation(ModelingToolkit.GetInput(ap), sys)
+    end
+    x = Symbolics.unwrap(x)
+    return Symbolics.symbolic_type(x) == Symbolics.ArraySymbolic() ? length(x) : 1
+end
+
+# One name per scalar channel. A signal named `s` of width `n > 1` is expanded to the channel
+# names `s1, ..., sn`, following `RobustAndOptimalControl.expand_symbol`.
+function channel_names(names, widths)
+    out = Symbol[]
+    for (name, w) in zip(names, widths)
+        append!(out, RobustAndOptimalControl.expand_symbol(name, w))
+    end
+    return out
+end
+
+# Operating-point values of the inputs of `ssys`, one entry per scalar channel
+function input_operating_point(ssys, xpt)
+    u0 = Any[]
+    for i in ModelingToolkit.inputs(ssys)
+        v = xpt.p[ModelingToolkit.parameter_index(ssys, i)]
+        v isa AbstractArray ? append!(u0, vec(v)) : push!(u0, v)
+    end
+    return identity.(u0)
+end
+
 """
     RobustAndOptimalControl.named_ss(sys::ModelingToolkit.AbstractSystem, inputs, outputs; descriptor=true, simple_infeigs=true, balance=false, kwargs...)
 
@@ -96,8 +129,6 @@ function RobustAndOptimalControl.named_ss(
             inp
         end
     end
-    nu = length(inputs)
-
     outputs = map(outputs) do out
         if out isa System
             @variables u(t)
@@ -110,8 +141,12 @@ function RobustAndOptimalControl.named_ss(
             out
         end
     end
+    # The linearization has one channel per element of an array-valued input or output, so
+    # the names and the number of inputs are counted per channel
+    unames = channel_names(symstr.(inputs), [signal_width(sys, u) for u in inputs])
+    ynames = channel_names(symstr.(outputs), [signal_width(sys, y) for y in outputs])
+    nu = length(unames)
     matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
-    unames = symstr.(inputs)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
         # Derivative column nu + i is the derivative of input i (see the MTK docs for
@@ -124,10 +159,7 @@ function RobustAndOptimalControl.named_ss(
     else
         lsys = ss(matrices...)
     end
-    pind = [ModelingToolkit.parameter_index(ssys, i) for i in ModelingToolkit.inputs(ssys)]
-    x0 = xpt.x
-    u0 = [xpt.p[pi] for pi in pind] 
-    xu = (; x = x0, u = u0)
+    xu = (; x = xpt.x, u = input_operating_point(ssys, xpt))
     extra = Dict(:operating_point => xu)
     # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
     x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
@@ -135,7 +167,7 @@ function RobustAndOptimalControl.named_ss(
         lsys;
         x = x_names,
         u = unames,
-        y = symstr.(outputs),
+        y = ynames,
         name = string(Base.nameof(sys)),
         extra,
     )
@@ -157,8 +189,9 @@ function RobustAndOptimalControl.named_ss(
     # the input variables are recovered from the simplified system instead, which
     # is what the operating-point extraction below already relies on.
     inputs = ModelingToolkit.inputs(ssys)
-    nu = length(inputs)
-    unames = symstr.(inputs)
+    unames = channel_names(symstr.(inputs), [signal_width(ssys, u) for u in inputs])
+    ynames = channel_names(symstr.(outputs), [signal_width(ssys, y) for y in outputs])
+    nu = length(unames)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
         # Derivative column nu + i is the derivative of input i (see the MTK docs for
@@ -171,10 +204,7 @@ function RobustAndOptimalControl.named_ss(
     else
         lsys = ss(matrices...)
     end
-    pind = [ModelingToolkit.parameter_index(ssys, i) for i in ModelingToolkit.inputs(ssys)]
-    x0 = xpt.x
-    u0 = [xpt.p[pi] for pi in pind] 
-    xu = (; x = x0, u = u0)
+    xu = (; x = xpt.x, u = input_operating_point(ssys, xpt))
     extra = Dict(:operating_point => xu)
     # If simple_infeigs=false, the system might have been reduced and the state names might not match the original system.
     x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
@@ -182,7 +212,7 @@ function RobustAndOptimalControl.named_ss(
         lsys;
         x = x_names,
         u = unames,
-        y = symstr.(outputs),
+        y = ynames,
         name = string(Base.nameof(sys)),
         extra,
     )
@@ -311,10 +341,9 @@ function named_sensitivity_function(
             inp
         end
     end
-    nu = length(inputs)
+    unames = channel_names(symstr.(inputs), [signal_width(sys, u) for u in inputs])
+    nu = length(unames)
     matrices, ssys, xpt = fun(sys, inputs, args...; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
-    symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
-    unames = symstr.(inputs)
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
@@ -329,8 +358,7 @@ function named_sensitivity_function(
         lsys = ss(matrices...)
     end
     x_names = get_x_names(lsys, ssys; descriptor, simple_infeigs, balance)
-    u0 = [xpt.p[ModelingToolkit.parameter_index(ssys, i)] for i in ModelingToolkit.inputs(ssys)]
-    xu = (; x=xpt.x, u = u0)
+    xu = (; x = xpt.x, u = input_operating_point(ssys, xpt))
     extra = Dict(:operating_point => xu)
     nsys = named_ss(
         lsys;
