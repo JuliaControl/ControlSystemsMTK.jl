@@ -451,4 +451,12 @@ w_test = [1e-5, 1, 100]
     @test Sv.u == Sv.y == [:u1, :u2]
     # With the negative-feedback gain K, the sensitivity at the plant input is (I + K P)^-1
     @test tf(minreal(Sv.sys)) ≈ tf(feedback(ss(I(2)), K * Pref))
+
+    @test ControlSystemsMTK.signal_channel_names(vsys, [:u, :y]) == [:u1, :u2, :y1, :y2]
+    Gs = named_ss(vsys, [:u], [vplant.y[1]])
+    @test ControlSystemsMTK.signal_channel_names(vsys, [:u, vplant.y[1]]) == [Gs.u; Gs.y]
+    # The channels of an array-valued signal `x` coincide with the name of a scalar signal `x1`
+    @test_throws ArgumentError ControlSystemsMTK.channel_names([:x, :x1], [2, 1])
+    @test_throws r"`x1` \(from `x` and `x1`\)" ControlSystemsMTK.channel_names([:x, :x1], [2, 1])
+    @test ControlSystemsMTK.channel_names([:x, :x3], [2, 1]) == [:x1, :x2, :x3]
 end

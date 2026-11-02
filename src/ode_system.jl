@@ -75,11 +75,32 @@ end
 # names `s1, ..., sn`, following `RobustAndOptimalControl.expand_symbol`.
 function channel_names(names, widths)
     out = Symbol[]
+    sources = Dict{Symbol, Vector{Symbol}}()
     for (name, w) in zip(names, widths)
-        append!(out, RobustAndOptimalControl.expand_symbol(name, w))
+        for c in RobustAndOptimalControl.expand_symbol(name, w)
+            push!(out, c)
+            push!(get!(sources, c, Symbol[]), name)
+        end
+    end
+    if !allunique(out)
+        clashes = join(("`$c` (from $(join(("`$n`" for n in sources[c]), " and ")))" for c in unique(out) if length(sources[c]) > 1), ", ")
+        throw(ArgumentError("The channel names $clashes are not unique. An array-valued signal `s` with `n` elements has the channels `s1, ..., sn`; rename the signals so that these names do not coincide with the names of other signals."))
     end
     return out
 end
+
+"""
+    signal_channel_names(sys, signals)
+
+Return the names of the scalar channels of `signals`, in the order in which [`named_ss`](@ref)
+and the `get_named_*` functions name the inputs and outputs of the linearized system. Each
+entry of `signals` is a variable or an analysis point (an `AnalysisPoint` or its name) of
+`sys`. A signal `s` with one element has the channel `s`, and an array-valued signal `s` with
+`n` elements has the channels `s1, ..., sn`. An `ArgumentError` is thrown if two channel
+names coincide.
+"""
+signal_channel_names(sys, signals) =
+    channel_names(symstr.(signals), [signal_width(sys, s) for s in signals])
 
 # Operating-point values of the inputs of `ssys`, one entry per scalar channel
 function input_operating_point(ssys, xpt)
@@ -143,8 +164,8 @@ function RobustAndOptimalControl.named_ss(
     end
     # The linearization has one channel per element of an array-valued input or output, so
     # the names and the number of inputs are counted per channel
-    unames = channel_names(symstr.(inputs), [signal_width(sys, u) for u in inputs])
-    ynames = channel_names(symstr.(outputs), [signal_width(sys, y) for y in outputs])
+    unames = signal_channel_names(sys, inputs)
+    ynames = signal_channel_names(sys, outputs)
     nu = length(unames)
     matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     if nu > 0 && size(matrices.B, 2) == 2nu
@@ -189,8 +210,8 @@ function RobustAndOptimalControl.named_ss(
     # the input variables are recovered from the simplified system instead, which
     # is what the operating-point extraction below already relies on.
     inputs = ModelingToolkit.inputs(ssys)
-    unames = channel_names(symstr.(inputs), [signal_width(ssys, u) for u in inputs])
-    ynames = channel_names(symstr.(outputs), [signal_width(ssys, y) for y in outputs])
+    unames = signal_channel_names(ssys, inputs)
+    ynames = signal_channel_names(ssys, outputs)
     nu = length(unames)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
@@ -341,7 +362,7 @@ function named_sensitivity_function(
             inp
         end
     end
-    unames = channel_names(symstr.(inputs), [signal_width(sys, u) for u in inputs])
+    unames = signal_channel_names(sys, inputs)
     nu = length(unames)
     matrices, ssys, xpt = fun(sys, inputs, args...; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     fm(x) = convert(Matrix{Float64}, x)
