@@ -406,3 +406,57 @@ w_test = [1e-5, 1, 100]
 @test freqresp(G, w_test) ≈ freqresp(G4, w_test)
 
 # bodeplot([G, G2, G3, G4, G5], exp10.(LinRange(-2, 2, 200)))
+## Analysis points on array-valued connections
+# Each element of an array-valued analysis point is one channel of the linearization. The
+# channel count must not be taken from the number of analysis points: with a 2-vector input
+# and `nu = 1`, the second column of `B` was treated as the derivative of the first.
+@testset "Array-valued analysis points" begin
+    tv = ModelingToolkit.t_nounits
+    Dv = ModelingToolkit.D_nounits
+    @component function VecPlant(; name)
+        @variables x(tv)[1:2] = zeros(2) u(tv)[1:2] [input = true] y(tv)[1:2] [output = true]
+        eqs = [Dv(x[1]) ~ -x[1] + u[1], Dv(x[2]) ~ -2x[2] + 3u[2], y[1] ~ x[1], y[2] ~ x[2]]
+        System(eqs, tv; name)
+    end
+    @component function VecGain(; name)
+        @variables u(tv)[1:2] [input = true] y(tv)[1:2] [output = true]
+        @parameters k[1:2] = [1.0, 5.0]
+        System([y[1] ~ -k[1] * u[1], y[2] ~ -k[2] * u[2]], tv; name)
+    end
+    @named vplant = VecPlant()
+    @named vgain = VecGain()
+    vsys = System(
+        [connect(vplant.y, :y, vgain.u), connect(vgain.y, :u, vplant.u)], tv;
+        systems = [vplant, vgain], name = :vsys
+    )
+    Pref = ss([-1.0 0; 0 -2], [1.0 0; 0 3], I(2), 0)
+    K = diagm([1.0, 5.0])
+    # From the input analysis point to the output analysis point of the closed loop
+    Gref = feedback(Pref, K)
+    for allow_input_derivatives in (false, true)
+        Gv = named_ss(vsys, [:u], [:y]; allow_input_derivatives)
+        @test Gv.u == [:u1, :u2]
+        @test Gv.y == [:y1, :y2]
+        @test length(Gv.extra[:operating_point].u) == 2
+        @test tf(minreal(Gv.sys)) ≈ tf(Gref)
+        # The channels of an analysis point are selected by its name
+        @test size(Gv[:y, :u]) == (2, 2)
+    end
+    # Array-valued input analysis point with scalar outputs
+    Gv = named_ss(vsys, [:u], [vplant.y[1], vplant.y[2]])
+    @test Gv.u == [:u1, :u2]
+    @test tf(minreal(Gv.sys)) ≈ tf(Gref)
+
+    Sv = get_named_sensitivity(vsys, :u)
+    @test Sv.u == Sv.y == [:u1, :u2]
+    # With the negative-feedback gain K, the sensitivity at the plant input is (I + K P)^-1
+    @test tf(minreal(Sv.sys)) ≈ tf(feedback(ss(I(2)), K * Pref))
+
+    @test ControlSystemsMTK.signal_channel_names(vsys, [:u, :y]) == [:u1, :u2, :y1, :y2]
+    Gs = named_ss(vsys, [:u], [vplant.y[1]])
+    @test ControlSystemsMTK.signal_channel_names(vsys, [:u, vplant.y[1]]) == [Gs.u; Gs.y]
+    # The channels of an array-valued signal `x` coincide with the name of a scalar signal `x1`
+    @test_throws ArgumentError ControlSystemsMTK.channel_names([:x, :x1], [2, 1])
+    @test_throws r"`x1` \(from `x` and `x1`\)" ControlSystemsMTK.channel_names([:x, :x1], [2, 1])
+    @test ControlSystemsMTK.channel_names([:x, :x3], [2, 1]) == [:x1, :x2, :x3]
+end
