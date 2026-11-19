@@ -16,8 +16,8 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ControlSystemsBase = "1.0.1"
-ModelingToolkit = "11.36"
-ModelingToolkitBase = "1.56"
+ModelingToolkit = "11.47"
+ModelingToolkitBase = "1.79"
 ModelingToolkitStandardLibrary = "2"
 MonteCarloMeasurements = "1.1"
 RobustAndOptimalControl = "0.4.14"
@@ -35,7 +35,3 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "ControlSystems", "DataInterpolations", "GenericLinearAlgebra", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqNonlinearSolve"]
-
-[sources]
-ModelingToolkit = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "bagge/loop-opening-initial-conditions"}
-ModelingToolkitBase = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "bagge/loop-opening-initial-conditions", subdir = "lib/ModelingToolkitBase"}
