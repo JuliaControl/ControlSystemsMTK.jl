@@ -122,7 +122,7 @@ https://juliacontrol.github.io/ControlSystemsMTK.jl/dev/#Internals:-Transformati
 If `descriptor = false`, the system is instead converted to a statespace realization using `sys[:,uinds] + sys[:,duinds]*tf('s')`, which tends to result in a larger realization on which the user may want to call `minreal(sys, tol)` with a carefully selected tolerance.
 
 # Hybrid models
-If `sys` contains clocked (discrete-time) partitions that are connected to the continuous-time equations through `Sample` and `Hold`, the keyword argument `hybrid` defaults to `true`. Each clock partition is then linearized separately with `ModelingToolkit.linearize_hybrid` and the partitions are assembled into a single discrete-time system: the continuous-time partition is discretized with zero-order hold at the sample interval of the clock and the connections across the clock boundaries are closed. Inputs that belong to the continuous-time partition are consequently assumed to be piecewise constant between the sample instants, and outputs of the continuous-time partition are obtained at the sample instants only. All clocked partitions are required to be on the same periodic clock, and the continuous-time partition must not have direct feedthrough from a held signal to a sampled signal. The `HybridLinearization` returned by `linearize_hybrid` is stored in `extra[:hybrid_linearization]` of the result, and `kwargs` are forwarded to `linearize_hybrid`. With `hybrid = false`, the model is passed to `ModelingToolkit.linearize`, the result of which does not include the clocked partitions.
+A model that contains clocked (discrete-time) partitions connected to the continuous-time equations is linearized as a hybrid model if `hybrid = true`. This is the default if `additional_passes` contains a discrete compilation pass, such as `SynchToolkit.compile_lustre`, and also if ModelingToolkit rejects the model as a hybrid model because no such pass was supplied. Each clock partition is then linearized separately with `ModelingToolkit.linearize_hybrid` and the partitions are assembled into a single discrete-time system: the continuous-time partition is discretized with zero-order hold at the sample interval of the clock and the connections across the clock boundaries are closed. Inputs that belong to the continuous-time partition are consequently assumed to be piecewise constant between the sample instants, and outputs of the continuous-time partition are obtained at the sample instants only. All clocked partitions are required to be on the same periodic clock, and the continuous-time partition must not have direct feedthrough from a held signal to a sampled signal. The `HybridLinearization` returned by `linearize_hybrid` is stored in `extra[:hybrid_linearization]` of the result, and `kwargs` are forwarded to `linearize_hybrid`. With `hybrid = false`, the model is passed to `ModelingToolkit.linearize`, the result of which does not include the clocked partitions.
 
 See also [`ModelingToolkit.linearize`](@ref) which is the lower-level function called internally. The functions [`get_named_sensitivity`](@ref), [`get_named_comp_sensitivity`](@ref), [`get_named_looptransfer`](@ref) similarily provide convenient ways to compute sensitivity functions while retaining signal names in the same way as `named_ss`. The corresponding lower-level functions `get_sensitivity`, `get_comp_sensitivity` and `get_looptransfer` are available in ModelingToolkitStandardLibrary.Blocks and are documented in [MTKstdlib: Linear analysis](https://docs.sciml.ai/ModelingToolkitStandardLibrary/stable/API/linear_analysis/).
 """
@@ -134,7 +134,7 @@ function RobustAndOptimalControl.named_ss(
     simple_infeigs = true,
     balance = descriptor && !simple_infeigs, # balance only if descriptor is true and simple_infeigs is false
     big = false,
-    hybrid = has_clock_boundary(sys),
+    hybrid = nothing,
     kwargs...,
 )
 
@@ -170,11 +170,15 @@ function RobustAndOptimalControl.named_ss(
     unames = signal_channel_names(sys, inputs)
     ynames = signal_channel_names(sys, outputs)
     nu = length(unames)
-    if hybrid
-        hl = hybrid_linearization(ModelingToolkit.linearize, sys, inputs, outputs; kwargs...)
-        return named_ss_hybrid(hl, sys, inputs, outputs, unames, ynames; descriptor, simple_infeigs, big, balance)
+    assemble_hybrid() = named_ss_hybrid(
+        hybrid_linearization(ModelingToolkit.linearize, sys, inputs, outputs; kwargs...),
+        sys, inputs, outputs, unames, ynames; descriptor, simple_infeigs, big, balance)
+    something(hybrid, has_discrete_compile_pass(kwargs)) && return assemble_hybrid()
+    lin = linearize_or_fallback(assemble_hybrid, hybrid) do
+        ModelingToolkit.linearize(sys, inputs, outputs; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     end
-    matrices, ssys, xpt = ModelingToolkit.linearize(sys, inputs, outputs; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
+    lin isa NamedStateSpace && return lin
+    matrices, ssys, xpt = lin
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
         # Derivative column nu + i is the derivative of input i (see the MTK docs for
@@ -359,7 +363,7 @@ function named_sensitivity_function(
     simple_infeigs = true,
     balance = descriptor && !simple_infeigs, # balance only if descriptor is true and simple_infeigs is false
     big = false,
-    hybrid = has_clock_boundary(sys),
+    hybrid = nothing,
     kwargs...,
 )
 
@@ -378,13 +382,17 @@ function named_sensitivity_function(
     end
     unames = signal_channel_names(sys, inputs)
     nu = length(unames)
-    if hybrid
-        hl = hybrid_linearization(fun, sys, inputs, args...; kwargs...)
-        # The perturbation and output variables are created by the analysis-point
-        # transformation and are thus not available for matching
-        return named_ss_hybrid(hl, sys, nothing, nothing, unames, unames; descriptor, simple_infeigs, big, balance)
+    # The perturbation and output variables are created by the analysis-point
+    # transformation and are thus not available for matching
+    assemble_hybrid() = named_ss_hybrid(
+        hybrid_linearization(fun, sys, inputs, args...; kwargs...),
+        sys, nothing, nothing, unames, unames; descriptor, simple_infeigs, big, balance)
+    something(hybrid, has_discrete_compile_pass(kwargs)) && return assemble_hybrid()
+    lin = linearize_or_fallback(assemble_hybrid, hybrid) do
+        fun(sys, inputs, args...; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     end
-    matrices, ssys, xpt = fun(sys, inputs, args...; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
+    lin isa NamedStateSpace && return lin
+    matrices, ssys, xpt = lin
     fm(x) = convert(Matrix{Float64}, x)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
@@ -472,7 +480,7 @@ The second problem above, the ordering of the states, can be worked around using
 - `costs`: A vector of pairs.
 """
 function build_quadratic_cost_matrix(sys::System, inputs::AbstractVector, costs::AbstractVector{<:Pair}; kwargs...)
-    check_no_clock_boundary(sys, "build_quadratic_cost_matrix")
+    check_no_discrete_compile_pass(sys, "build_quadratic_cost_matrix", kwargs)
     matrices, ssys, extras = ModelingToolkit.linearize(sys, inputs, first.(costs); DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     x = ModelingToolkit.unknowns(ssys)
     y = ModelingToolkit.outputs(ssys)
@@ -495,7 +503,7 @@ end
 function batch_linearize(sys, inputs, outputs, ops::AbstractVector{<:AbstractDict}; t = 0.0,
         allow_input_derivatives = false,
         kwargs...)
-    check_no_clock_boundary(sys, "batch_ss")
+    check_no_discrete_compile_pass(sys, "batch_ss", kwargs)
     lin_fun, ssys = linearization_function(sys, inputs, outputs; op=ops[1], DEFAULT_LINEARIZE_KWARGS..., kwargs...)
     lins_ops = map(ops) do op
         linearize(ssys, lin_fun; op, t, allow_input_derivatives)
@@ -625,7 +633,7 @@ function trajectory_ss(sys, inputs, outputs, sol; t = _max_100(sol.t), op = Dict
     # `op` overrides values from `sol`; signals opened by `loop_openings` are held at their
     # values in the loop-closed solution unless `op` specifies them.
     oppoint = ModelingToolkit.LinearizationOpPoint(sol, t; op)
-    check_no_clock_boundary(sys, "trajectory_ss")
+    check_no_discrete_compile_pass(sys, "trajectory_ss", kwargs)
     lins, ssys, resolved_ops = linearize(sys, inputs, outputs; op = oppoint, allow_input_derivatives, loop_openings, DEFAULT_LINEARIZE_KWARGS..., kwargs...)
 
     named_linsystems = map(lins) do l

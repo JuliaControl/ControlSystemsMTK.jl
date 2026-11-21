@@ -1,7 +1,10 @@
 using ControlSystemsMTK, ControlSystemsBase, ModelingToolkit, Test
 using RobustAndOptimalControl: NamedStateSpace
 using ModelingToolkit: t_nounits as t, D_nounits as D, connect
-using ControlSystemsMTK: has_clock_boundary
+
+# A stand-in for a discrete compilation pass such as `SynchToolkit.compile_lustre`
+discrete_pass(args...) = error("The discrete compilation pass is not expected to be called")
+ModelingToolkit.discrete_compile_pass(::typeof(discrete_pass)) = true
 
 function freqresp_isapprox(G1, G2; w = exp10.(range(-2, 1, length = 30)), atol = 1.0e-8)
     isapprox(freqresp(G1, w), freqresp(G2, w); atol)
@@ -37,12 +40,6 @@ Pd = c2d(ss(-1.0, 1.0, 1.0, 0.0), dt)
 Cd = ss(kpv + kiv * dt * z / (z - 1))
 Sd = feedback(1, Pd * Cd)
 
-@testset "Detection of clock boundaries" begin
-    @test has_clock_boundary(loop)
-    @named continuous = System(plant, t)
-    @test !has_clock_boundary(continuous)
-end
-
 if isdefined(ModelingToolkit, :linearize_hybrid)
     @testset "named_ss" begin
         G = named_ss(loop_d, [d], [y]; op)
@@ -52,6 +49,11 @@ if isdefined(ModelingToolkit, :linearize_hybrid)
         @test G.y == [Symbol("y(t)")]
         @test freqresp_isapprox(G, Pd * Sd)
         @test G.extra[:hybrid_linearization] isa ModelingToolkit.HybridLinearization
+
+        # A discrete compilation pass selects the hybrid linearization
+        G = named_ss(loop_d, [d], [y]; op, additional_passes = [discrete_pass])
+        @test freqresp_isapprox(G, Pd * Sd)
+        @test_throws ModelingToolkit.HybridSystemNotSupportedException named_ss(loop_d, [d], [y]; op, hybrid = false)
 
         # The result of `ss` is assembled in the same way
         @test freqresp_isapprox(ss(loop_d, [d], [y]; op), Pd * Sd)
@@ -68,12 +70,14 @@ if isdefined(ModelingToolkit, :linearize_hybrid)
 
     @testset "Inputs and outputs in several partitions" begin
         # The order of the signals differs from the order of the partitions
-        G = named_ss(loop, [r, d], [ud, y]; op)
+        # Without a discrete compilation pass, a model with inputs in a clocked partition is
+        # not recognized as hybrid, which is why `hybrid = true` is required
+        G = named_ss(loop, [r, d], [ud, y]; op, hybrid = true)
         @test G.u == [Symbol("r(t)"), Symbol("d(t)")]
         @test G.y == [Symbol("ud(t)"), Symbol("y(t)")]
         Gref = [Cd*Sd -Cd*Pd*Sd; Pd*Cd*Sd Pd*Sd]
         @test freqresp_isapprox(G, Gref)
-        G = named_ss(loop, [d, r], [y, ud]; op)
+        G = named_ss(loop, [d, r], [y, ud]; op, additional_passes = [discrete_pass])
         @test freqresp_isapprox(G, Gref[[2, 1], [2, 1]])
     end
 
@@ -112,11 +116,12 @@ if isdefined(ModelingToolkit, :linearize_hybrid)
 else
     @testset "Hybrid linearization unavailable" begin
         @test_throws "linearize_hybrid" named_ss(loop_d, [d], [y]; op)
+        @test_throws "linearize_hybrid" named_ss(loop_d, [d], [y]; op, additional_passes = [discrete_pass])
         @test_throws "linearize_hybrid" get_named_sensitivity(loop_closed, loop_closed.plant_input; op)
     end
 end
 
 @testset "Functions without support for hybrid models" begin
-    @test_throws "clocked partitions" batch_ss(loop_d, [d], [y], [op])
-    @test_throws "clocked partitions" build_quadratic_cost_matrix(loop_d, [d], [y => 1.0]; op)
+    @test_throws "clocked partitions" batch_ss(loop_d, [d], [y], [op]; additional_passes = [discrete_pass])
+    @test_throws "clocked partitions" build_quadratic_cost_matrix(loop_d, [d], [y => 1.0]; op, additional_passes = [discrete_pass])
 end

@@ -1,37 +1,44 @@
 # Linearization of hybrid models, that is, models in which clocked (discrete-time) partitions
-# are connected to continuous-time equations through `Sample` and `Hold`.
+# are connected to continuous-time equations.
 
-is_clock_boundary_operator(x) =
-    Symbolics.iscall(x) && Symbolics.operation(x) isa Union{ModelingToolkit.Sample, ModelingToolkit.Hold}
-
-"""
-    has_clock_boundary(sys)
-
-Return `true` if the equations of `sys` contain a `Sample` or `Hold` operator, that is, if a
-signal crosses the boundary between a clocked partition and another partition of the model.
-`named_ss` and the `get_named_*` functions use this to select the default of their keyword
-argument `hybrid`.
-"""
-function has_clock_boundary(sys::ModelingToolkit.AbstractSystem)
-    for eq in ModelingToolkit.equations(sys)
-        for side in (eq.lhs, eq.rhs)
-            side = Symbolics.unwrap(side)
-            side isa Symbolics.SymbolicT || continue
-            Symbolics.hasnode(is_clock_boundary_operator, side) && return true
-        end
-    end
-    return false
+# A discrete compilation pass, such as `SynchToolkit.compile_lustre`, among the
+# `additional_passes` indicates that the model has clocked partitions. With such a pass,
+# `ModelingToolkit.linearize` succeeds but its result omits the clocked partitions.
+function has_discrete_compile_pass(kwargs)
+    passes = get(kwargs, :additional_passes, nothing)
+    passes === nothing && return false
+    return any(ModelingToolkit.discrete_compile_pass, passes)
 end
 
-function check_no_clock_boundary(sys, fname)
-    has_clock_boundary(sys) || return nothing
-    throw(ArgumentError("The model `$(nameof(sys))` contains clocked partitions connected through `Sample` or `Hold`, which `$fname` does not support: the linearization would omit the clocked partitions. Use `named_ss` or the `get_named_*` functions, which assemble the sampled-data system of a hybrid model, or `ModelingToolkit.linearize_hybrid`."))
+# `linearize_hybrid` compiles each partition itself, the discrete compilation pass is not used
+function without_discrete_compile_pass(kwargs)
+    has_discrete_compile_pass(kwargs) || return kwargs
+    passes = filter(!ModelingToolkit.discrete_compile_pass, collect(kwargs[:additional_passes]))
+    return (; kwargs..., additional_passes = passes)
+end
+
+function check_no_discrete_compile_pass(sys, fname, kwargs)
+    has_discrete_compile_pass(kwargs) || return nothing
+    throw(ArgumentError("A discrete compilation pass was supplied in `additional_passes`, which indicates that the model `$(nameof(sys))` contains clocked partitions. `$fname` does not support such models: the linearization would omit the clocked partitions. Use `named_ss` or the `get_named_*` functions, which assemble the sampled-data system of a hybrid model, or `ModelingToolkit.linearize_hybrid`."))
+end
+
+# Call `linearization()`, the linearization that does not account for clocked partitions.
+# Without a discrete compilation pass, ModelingToolkit rejects a model with clocked
+# partitions; unless the caller chose `hybrid = false`, `fallback()` is then called.
+function linearize_or_fallback(linearization, fallback, hybrid)
+    try
+        return linearization()
+    catch e
+        (hybrid === nothing && e isa ModelingToolkit.HybridSystemNotSupportedException) || rethrow()
+    end
+    return fallback()
 end
 
 # Call the hybrid counterpart of the linearization function `fun`
 function hybrid_linearization(fun, sys, args...; kwargs...)
+    kwargs = without_discrete_compile_pass(kwargs)
     if !isdefined(ModelingToolkit, :linearize_hybrid)
-        throw(ArgumentError("The model `$(nameof(sys))` contains clocked partitions connected through `Sample` or `Hold`. Linearization of such a model requires `ModelingToolkit.linearize_hybrid`, which the installed version of ModelingToolkit does not provide. A linearization that omits the clocked partitions is obtained with `hybrid = false`."))
+        throw(ArgumentError("The model `$(nameof(sys))` contains clocked partitions. Linearization of such a model requires `ModelingToolkit.linearize_hybrid`, which the installed version of ModelingToolkit does not provide. A linearization that omits the clocked partitions is obtained with `hybrid = false`."))
     end
     if fun === ModelingToolkit.linearize
         ModelingToolkit.linearize_hybrid(sys, args...; DEFAULT_LINEARIZE_KWARGS..., kwargs...)
