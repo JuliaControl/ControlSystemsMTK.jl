@@ -98,22 +98,25 @@ connections across the clock boundaries are closed. All clocked partitions are r
 be on the same periodic clock, and the continuous partition must not have direct feedthrough
 from a held signal to a sampled signal.
 """
-function hybrid_ss(hl; descriptor = true, simple_infeigs = true, balance = false, big = false)
+function hybrid_ss(hl; convert_partition = nothing, descriptor = true, simple_infeigs = true, balance = false, big = false)
     partitions = hl.partitions
     ci = hl.continuous_index
     discrete = [p for (i, p) in enumerate(partitions) if i != ci]
-    if isempty(discrete)
+    if isempty(discrete) || convert_partition !== nothing
         Ts = nothing
     else
         clocks = unique(p.clock for p in discrete)
         if length(clocks) > 1 || any(p -> p.Ts === nothing, discrete)
-            throw(ArgumentError("The assembly of a hybrid linearization into a single system requires all clocked partitions to be on the same periodic clock, but the model has the clocks $(join(string.(clocks), ", ")). Use `ModelingToolkit.linearize_hybrid` and assemble the partitions manually."))
+            throw(ArgumentError("The assembly of a hybrid linearization into a single time-invariant system requires all clocked partitions to be on the same periodic clock, but the model has the clocks $(join(string.(clocks), ", ")). `multirate_linearization` creates a periodic model of a model with several clocks, and `single_rate_ss` a time-invariant approximation."))
         end
         Ts = discrete[1].Ts
     end
     named_states = true
     systems = map(enumerate(partitions)) do (i, p)
-        i == ci || return ss(p.A, p.B, p.C, p.D, Ts)
+        if i != ci
+            convert_partition === nothing && return ss(p.A, p.B, p.C, p.D, Ts)
+            return convert_partition(ss(p.A, p.B, p.C, p.D, p.Ts), p)
+        end
         nu = length(p.inputs)
         if nu > 0 && size(p.B, 2) == 2nu
             # Input derivatives are present, see `named_ss`
@@ -123,8 +126,10 @@ function hybrid_ss(hl; descriptor = true, simple_infeigs = true, balance = false
         else
             P = ss(p.A, p.B, p.C, p.D)
         end
+        convert_partition === nothing || return convert_partition(P, p)
         Ts === nothing ? P : c2d(P, Ts)
     end
+    convert_partition === nothing || (Ts = isdiscrete(systems[1]) ? systems[1].Ts : nothing)
     if ci !== nothing
         # A sampled signal with direct feedthrough from a held signal depends on the value
         # that was held before the tick, which the instantaneous connection below does not
@@ -132,7 +137,7 @@ function hybrid_ss(hl; descriptor = true, simple_infeigs = true, balance = false
         held = unique(c.input for c in hl.connections if c.to == ci)
         sampled = unique(c.output for c in hl.connections if c.from == ci)
         if !iszero(systems[ci].D[sampled, held])
-            throw(ArgumentError("The continuous-time partition has direct feedthrough from a held signal to a sampled signal. The assembly of such a model into a single system is not supported. Use `ModelingToolkit.linearize_hybrid` and assemble the partitions manually."))
+            throw(ArgumentError("The continuous-time partition has direct feedthrough from a held signal to a sampled signal. The assembly of such a model into a single system is not supported. `multirate_linearization` represents such a model."))
         end
     end
     A = cat((s.A for s in systems)...; dims = (1, 2))

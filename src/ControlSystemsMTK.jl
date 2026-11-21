@@ -34,6 +34,9 @@ export batch_ss, trajectory_ss, GainScheduledStateSpace
 export build_quadratic_cost_matrix
 
 export get_named_sensitivity, get_named_comp_sensitivity, get_named_looptransfer
+export MultirateLinearization, MultiratePort, multirate_linearization, lifted_ss, multipliers
+export fundamental_response, harmonic_response, performance_frequency_gain, robust_frequency_gain
+export multirate_margins, single_rate_ss
 
 """
 Default keyword arguments forwarded to ModelingToolkit's linearization (and through it to
@@ -54,6 +57,7 @@ const DEFAULT_LINEARIZE_KWARGS = (;
 
 include("hybrid.jl")
 include("ode_system.jl")
+include("multirate.jl")
 # include("symbolic_optimization.jl")
 
 end
