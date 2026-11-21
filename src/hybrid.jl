@@ -130,7 +130,7 @@ function hybrid_ss(hl; convert_partition = nothing, descriptor = true, simple_in
         Ts === nothing ? P : c2d(P, Ts)
     end
     convert_partition === nothing || (Ts = isdiscrete(systems[1]) ? systems[1].Ts : nothing)
-    if ci !== nothing
+    if ci !== nothing && convert_partition === nothing
         # A sampled signal with direct feedthrough from a held signal depends on the value
         # that was held before the tick, which the instantaneous connection below does not
         # represent

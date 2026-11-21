@@ -154,6 +154,46 @@ end
     Cc = d2c(ss(kpv + kiv * dts * z / (z - 1)), :tustin)
     P = ss(-1.0, 1.0, 1.0, 0.0)
     @test freqresp(Gc.sys, wv) ≈ freqresp(feedback(P, Cc), wv)
+    # A conversion that introduces feedthrough in the plant is not rejected
+    Gt = single_rate_ss(single, [d], [y]; Ts = dts / 2, op = op1)
+    @test Gt.Ts ≈ dts / 2
+    @test maximum(abs, poles(Gt.sys)) < 1
+end
+
+@testset "Clocked partitions that read each other at the same instant" begin
+    # Neither output depends directly on the other, so the model is causal
+    @variables p(t) q(t)
+    eqs = [
+        D(x) ~ -x + d
+        p(kf) ~ 0.5 * p(kf - 1) + 0.2 * Sample(dtf)(Hold(q))
+        q(ks) ~ 0.4 * q(ks - 1) + 0.3 * Sample(dts)(Hold(p))
+    ]
+    @named mutual = System(eqs, t)
+    @test_throws "not causal" multirate_linearization(mutual, [d], [x]; op = Dict(x => 0.0, d => 0.0, p => 0.0, q => 0.0))
+    # The fast partition uses the value of `q` at its previous tick
+    @variables qs(t)
+    eqs = [
+        D(x) ~ -x + d
+        qs ~ Sample(dtf)(Hold(q))
+        p(kf) ~ 0.5 * p(kf - 1) + 0.2 * qs(kf - 1)
+        q(ks) ~ 0.4 * q(ks - 1) + 0.3 * Sample(dts)(Hold(p))
+    ]
+    @named mutual = System(eqs, t)
+    mlm = multirate_linearization(mutual, [d], [x]; op = Dict(x => 0.0, d => 0.0, p => 0.0, q => 0.0, qs => 0.0))
+    # One period of the clocked equations, with the state (p, qs, q) of the previous ticks
+    function period(v)
+        pprev, qsprev, qprev = v
+        for m in 0:ratio-1
+            pv = 0.5 * pprev + 0.2 * qsprev
+            m == 0 && (qprev = 0.4 * qprev + 0.3 * pv)
+            pprev, qsprev = pv, qprev
+        end
+        [pprev, qsprev, qprev]
+    end
+    Mref = reduce(hcat, period.(eachcol(Matrix(1.0I, 3, 3))))
+    nonzero(λ) = sort(filter(l -> abs(l) > 1e-8, λ), by = abs)
+    # The plant is not connected to the clocked partitions and contributes its own multiplier
+    @test nonzero(multipliers(mlm)) ≈ nonzero([eigvals(Mref); exp(-dts)])
 end
 
 @testset "Held signal with direct feedthrough to a sampled signal" begin
@@ -180,8 +220,8 @@ end
         z = tf("z", dts)
         L = c2d(ss(-1.0, 1.0, 1.0, 0.0), dts) * ss(kpv + kiv * dts * z / (z - 1))
         dm = diskmargin(L)
-        @test m.disk_margin_lti_lower_bound.α ≈ dm.α rtol = 1e-3
-        @test m.disk_margin_dynamic.α ≈ dm.α rtol = 1e-3
+        @test m.disk_margin_lti_lower_bound.α ≈ dm.α rtol = 1e-4
+        @test m.disk_margin_dynamic.α ≈ dm.α rtol = 1e-4
         # The upper limit of the gain is where a closed-loop pole reaches the unit circle
         gmax = m.gain_interval[2]
         @test maximum(abs, poles(feedback(gmax * L))) ≈ 1 atol = 1e-6

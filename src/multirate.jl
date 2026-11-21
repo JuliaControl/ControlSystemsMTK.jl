@@ -101,16 +101,18 @@ function tick_times(T, phase, t0, Tc; tol)
     [phase + (m0 + m) * T for m in 0:n-1]
 end
 
-# Order in which the clocked partitions `ticking` are evaluated at an instant: a partition
-# that reads the output of another partition ticking at the same instant is evaluated after it
-function evaluation_order(ticking, connections, ci)
+# Order in which the outputs of the clocked partitions `ticking` are computed at an instant: a
+# partition whose output depends directly, through its feedthrough matrix, on the output of
+# another partition ticking at the same instant is evaluated after it
+function evaluation_order(ticking, connections, ci, systems)
+    depends(p, q) = any(connections) do c
+        c.to == p && c.from == q && !iszero(systems[p].D[:, c.input])
+    end
     remaining = collect(ticking)
     order = Int[]
     while !isempty(remaining)
-        i = findfirst(remaining) do p
-            !any(c -> c.to == p && c.from != ci && c.from in remaining && c.from != p, connections)
-        end
-        i === nothing && throw(ArgumentError("The clocked partitions $(remaining) that tick at the same instant depend on each other in a cycle, the model is not causal."))
+        i = findfirst(p -> !any(q -> q != p && depends(p, q), remaining), remaining)
+        i === nothing && throw(ArgumentError("The outputs of the clocked partitions $(remaining), which tick at the same instant, depend on each other in a cycle; the model is not causal."))
         push!(order, remaining[i])
         deleteat!(remaining, i)
     end
@@ -128,20 +130,27 @@ clocked partitions are on periodic clocks with commensurate periods and arbitrar
 `get_looptransfer` with `hybrid = true`. The second method calls `linearize_hybrid` with
 `kwargs`.
 
-The semantics at an instant where clocks tick are:
-- A sampled signal of the continuous-time partition is read before any hold is updated at
-  that instant.
-- A clocked partition that reads a signal of another clocked partition ticking at the same
-  instant reads the new value.
-- All holds are updated, after which the continuous-time partition is integrated exactly to
-  the next instant with constant inputs.
+The operations at an event are, in this order:
+1. Inputs of the continuous-time partition that are specified by the user take their new
+   values, if the event is an instant of their grid.
+2. The signals of the continuous-time partition that are sampled are evaluated, with the
+   values that the clocked partitions held before the event. A sampled signal with direct
+   feedthrough from a held signal thus contains the previously held value, and a sampled
+   signal with direct feedthrough from a user input contains its new value.
+3. The clocked partitions that tick compute their outputs and update their state. A
+   partition that reads a signal of another clocked partition ticking at the same instant
+   reads the new value.
+4. The held values are updated, and outputs of the continuous-time partition that are
+   specified by the user are observed, if the event is an instant of their grid.
+5. The continuous-time partition is integrated exactly to the next event with constant
+   inputs.
 
 # Keyword arguments
 - `continuous_rate`: Inputs and outputs of the continuous-time partition are held and observed on a uniform grid. With `:fastest`, the interval of the grid is the smallest clock period divided by `oversample`; with `:period`, it is the common period.
 - `oversample`: An integer that refines the grid of the signals of the continuous-time partition, which makes the behavior between the ticks of the clocks visible. The ticks of the clocks are not changed.
 - `t0`: The instant at which the period starts. The characteristic multipliers do not depend on `t0`, the input-output behavior does.
 - `inputs`, `outputs`: The variables that were used as inputs and outputs of the linearization. They are required to recover the order of the signals if these belong to several clock partitions.
-- `tol`: Relative tolerance for the recognition of commensurate periods and of coinciding instants.
+- `tol`: Relative tolerance for the recognition of commensurate periods and of coinciding instants: instants closer than `tol*Tc` are treated as one event.
 
 The linearization is required to be performed in a stationary operating point of the whole
 model. This is not verified.
@@ -189,12 +198,19 @@ function multirate_linearization(hl; oversample::Integer = 1, t0 = 0.0, continuo
     elseif ci != 0
         ticks[ci] = Float64[]
     end
+    # Each instant of each partition is assigned to exactly one event
+    instants = sort!([(t, i, r) for (i, ts) in ticks for (r, t) in enumerate(ts)])
     event_times = Float64[]
-    for t in sort!(reduce(vcat, values(ticks)))
-        (isempty(event_times) || t - event_times[end] > atol) && push!(event_times, t)
+    event_ticks = Dict{Int, Int}[] # partition => index of its instant, per event
+    for (t, i, r) in instants
+        if isempty(event_times) || t - event_times[end] > atol
+            push!(event_times, t)
+            push!(event_ticks, Dict{Int, Int}())
+        end
+        haskey(event_ticks[end], i) && throw(ArgumentError("Two instants of the same clock are closer than the tolerance `tol*Tc`."))
+        event_ticks[end][i] = r
     end
     K = length(event_times)
-    event_of(t) = findfirst(te -> abs(te - t) <= atol, event_times)
 
     # Signals, in the order of the partitions, and their order as specified by the user
     uports = [(i, j) for i in 1:np for j in 1:partitions[i].nu_user]
@@ -255,9 +271,9 @@ function multirate_linearization(hl; oversample::Integer = 1, t0 = 0.0, continuo
         # Each row of `R` expresses a state variable in the state before the event and the
         # lifted inputs
         R = [Matrix{Float64}(I, n, n) zeros(n, NU)]
-        ticking = [i for i in clocked if any(t -> abs(t - te) <= atol, ticks[i])]
-        tick_index(i) = findfirst(t -> abs(t - te) <= atol, ticks[i])
-        analysis = ci != 0 && tick_index(ci) !== nothing
+        ticking = [i for i in clocked if haskey(event_ticks[k], i)]
+        tick_index(i) = event_ticks[k][i]
+        analysis = haskey(event_ticks[k], ci)
         if analysis
             for j in 1:nuc
                 R[huidx[j], :] = unit(uchannel[((ci, j), tick_index(ci))])
@@ -277,21 +293,29 @@ function multirate_linearization(hl; oversample::Integer = 1, t0 = 0.0, continuo
         xnew = Dict{Int, Matrix{Float64}}()
         rows = Matrix{Float64}[]
         channels = Int[]
-        for i in evaluation_order(ticking, hl.connections, ci)
+        # Inputs of the clocked partition `i`. An output of a partition ticking at this event
+        # is used if it has been computed, otherwise the held value
+        function clocked_inputs(i)
             s = systems[i]
-            p = partitions[i]
             Ui = zeros(s.nu, n + NU)
             for j in 1:s.nu
-                if j <= p.nu_user
+                if j <= partitions[i].nu_user
                     Ui[j, :] = unit(uchannel[((i, j), tick_index(i))])
                 elseif haskey(source, (i, j))
                     from, o = source[(i, j)]
                     Ui[j, :] = from == ci ? yc[o, :] : haskey(ynew, from) ? ynew[from][o, :] : R[hidx[(from, o)], :]
                 end
             end
-            ynew[i] = s.C * R[xidx[i], :] + s.D * Ui
-            xnew[i] = s.A * R[xidx[i], :] + s.B * Ui
-            for j in 1:p.ny_user
+            Ui
+        end
+        # The outputs are computed in the order of their direct dependencies, the state
+        # updates thereafter, when all outputs of this event are available
+        for i in evaluation_order(ticking, hl.connections, ci, systems)
+            ynew[i] = systems[i].C * R[xidx[i], :] + systems[i].D * clocked_inputs(i)
+        end
+        for i in ticking
+            xnew[i] = systems[i].A * R[xidx[i], :] + systems[i].B * clocked_inputs(i)
+            for j in 1:partitions[i].ny_user
                 push!(rows, ynew[i][j:j, :])
                 push!(channels, ychannel[((i, j), tick_index(i))])
             end
@@ -378,7 +402,7 @@ end
 
 The characteristic multipliers of the periodic model: the eigenvalues of the monodromy
 matrix. The model is exponentially stable if and only if all multipliers have magnitude
-smaller than one. Hold variables contribute multipliers that are zero.
+smaller than one. Hold variables that are redundant contribute multipliers that are zero.
 """
 multipliers(ml::MultirateLinearization) = eigvals(lifted_matrices(ml)[1])
 
@@ -416,7 +440,9 @@ the frequency vector `w`. `u` and `y` are names or indices of signals of `ml`. T
 are required to have uniformly spaced instants.
 
 `k = 0` gives the [`fundamental_response`](@ref). The components with `k ≠ 0` are caused by
-sampling and holding and are absent in a time-invariant system.
+sampling and holding and are absent in a time-invariant system. An output with `n` instants
+per period distinguishes `n` components, `k = 0, …, n - 1`; other values of `k` coincide
+with one of these.
 """
 function harmonic_response(ml::MultirateLinearization, u, y, w::AbstractVector, k::Integer)
     up = uniform_port(find_port(ml.inputs, u, "input"))
@@ -435,8 +461,10 @@ the frequency vector `w`.
 
 For a time-invariant system this is the frequency response. For a sampled-data system it is
 one entry of the harmonic response: it is not a transfer function, and neither closed-loop
-stability nor stability margins can be concluded from it. If `ml` is a sensitivity function,
-the result is the fundamental sensitivity function of Goodwin and Salgado (1994).
+stability nor stability margins can be concluded from it. The result refers to the input
+held on its grid and the output observed on its grid; with a fine grid for signals of the
+continuous-time partition (`oversample`), the result for a sensitivity function approaches
+the fundamental sensitivity function of Goodwin and Salgado (1994).
 
 See also [`harmonic_response`](@ref) and [`performance_frequency_gain`](@ref).
 """
@@ -461,10 +489,12 @@ end
     robust_frequency_gain(ml::MultirateLinearization, u, y, w)
 
 The largest singular value of the frequency response of the lifted system between the
-signals `u` and `y`, for each element of the frequency vector `w`: the largest gain over all
-inputs that are composed of the frequencies `w + 2πk/Tc`. The result is periodic in `w` with
-period `2π/Tc`, and its supremum is the induced norm between the sequences of the sampled
-signals.
+signals `u` and `y`, for each element of the frequency vector `w`: the largest gain, in
+terms of the energy of the sequences of sampled values, over all inputs that are composed of
+the frequencies `w + 2πk/Tc`. The result is periodic in `w` with period `2π/Tc`, and for a
+stable model its supremum is the induced norm between the sequences of the sampled signals.
+For signals with `n_u` and `n_y` instants per period,
+`performance_frequency_gain ≤ sqrt(n_u/n_y)*robust_frequency_gain`.
 """
 function robust_frequency_gain(ml::MultirateLinearization, u, y, w::AbstractVector)
     up = find_port(ml.inputs, u, "input")
@@ -473,14 +503,17 @@ function robust_frequency_gain(ml::MultirateLinearization, u, y, w::AbstractVect
     [opnorm(G[:, :, i]) for i in eachindex(w)]
 end
 
-# Search from the nominal gain towards `limit` for the first gain at which `stable` is false
-function stability_limit(stable, limit; step = 1.01, iterations = 60)
+# Search from the nominal gain towards `limit` for the first gain at which `stable` is false.
+# `singular` contains gains at which the loop is not well posed.
+function stability_limit(stable, limit, singular; step = 1.002, iterations = 60)
     up = limit > 1
+    candidates = filter(g -> up ? 1 < g <= limit : limit <= g < 1, singular)
+    bound = isempty(candidates) ? limit : up ? minimum(candidates) : maximum(candidates)
     g = 1.0
     while true
         gn = up ? g * step : g / step
-        if up ? gn > limit : gn < limit
-            return up ? Inf : 0.0
+        if up ? gn >= bound : gn <= bound
+            return bound == limit ? (up ? Inf : 0.0) : bound
         end
         if !stable(gn)
             lo, hi = g, gn
@@ -508,18 +541,22 @@ The signal at the break point has `n` instants per period, and a perturbation of
 classified by its action on the `n` lifted channels. The result is a named tuple with one
 margin per class of perturbations:
 
-- `gain_interval`: The interval of constant real gains at the break point, containing the gain one, for which the loop is stable. Exact, within the search range `(1e-4, 1e4)`.
-- `disk_margin_lti_lower_bound`: A `RobustAndOptimalControl.Diskmargin` for time-invariant dynamic perturbations at the rate of the signal. Such a perturbation takes independent values at the `n` frequencies that are aliases of each other, and the margin is computed from an upper bound of the structured singular value with `n` independent complex scalars. It is a lower bound of the margin on the frequency grid.
-- `disk_margin_dynamic`: A `Diskmargin` for arbitrary dynamic perturbations of the lifted signal, which include periodically time-varying perturbations. It is conservative for time-invariant perturbations.
+- `gain_interval`: A numerical estimate of the interval of constant real positive gains at the break point, containing the gain one, for which the loop is stable and well posed. Gains at which the loop is not well posed are located exactly; the loss of stability is located by a search with relative step `0.002` from the gain one, which can miss an interval of unstable gains that is narrower than the step. A limit of `0` or `Inf` states that no boundary was found within the search range `(1e-4, 1e4)`.
+- `disk_margin_lti_lower_bound`: A `RobustAndOptimalControl.Diskmargin` for time-invariant dynamic perturbations at the rate of the signal. Such a perturbation takes values at the `n` frequencies that are aliases of each other, which are independent for a complex perturbation without further restrictions, and the margin is computed from an upper bound of the structured singular value with `n` independent complex scalars. It is a lower bound of the margin for this class on the grid of `N` frequencies; a peak between the frequencies of the grid is not detected. A perturbation with real coefficients, a fixed order, or the form of a delay belongs to a smaller class.
+- `disk_margin_dynamic`: A `Diskmargin` for arbitrary dynamic perturbations of the lifted signal, computed from the H∞ norm of the lifted system. This class includes periodically time-varying perturbations, and also perturbations that are not causal within the period. It is conservative for time-invariant perturbations.
 
-For `n = 1` the loop at the break point is time invariant and the two disk margins coincide
-with `RobustAndOptimalControl.diskmargin`.
+For `n = 1` the loop at the break point is time invariant and both disk margins are computed
+from the H∞ norm, in agreement with `RobustAndOptimalControl.diskmargin`.
 
-A signal of the continuous-time partition is represented by its values on the grid selected
-by `continuous_rate` and `oversample`, and the perturbations act on this representation.
-Only the gain interval then refers to a perturbation of the continuous-time signal itself.
+All margins refer to the signal as it is represented in `S`. A signal of the
+continuous-time partition is represented by its values on the grid selected by
+`continuous_rate` and `oversample`: the perturbation acts between the observation of the
+signal on the grid and a hold on the grid. The margins then apply to the continuous-time
+signal itself only if the perturbation can be moved across a sampler or a hold on the same
+branch without changing the loop, as for a constant gain directly at the output of a hold
+whose clock is the grid.
 
-`σ` is the skew of the disk and `N` the number of frequencies in the grid.
+`σ` is the skew of the disk.
 """
 function multirate_margins(ml::MultirateLinearization; σ = 0, N = 400)
     length(ml.inputs) == 1 && length(ml.outputs) == 1 && ml.inputs[1].times ≈ ml.outputs[1].times ||
@@ -536,23 +573,29 @@ function multirate_margins(ml::MultirateLinearization; σ = 0, N = 400)
         maximum(abs, eigvals(F - (1 - g) * G * (M \ H))) < 1
     end
     stable(1.0) || throw(ArgumentError("The nominal closed loop is not stable."))
-    gain_interval = (stability_limit(stable, 1e-4), stability_limit(stable, 1e4))
+    # g*I + (1 - g)*E is singular for g = e/(e - 1), where e is a real eigenvalue of E
+    singular = [real(e) / (real(e) - 1) for e in eigvals(E) if abs(imag(e)) < 1e-10 && !isapprox(real(e), 1)]
+    gain_interval = (stability_limit(stable, 1e-4, singular), stability_limit(stable, 1e4, singular))
 
     Ω = 2π / ml.Tc
-    w = range(0, Ω, length = N + 1)[1:end-1]
-    S = freqresp(ss(F, G, H, E, ml.Tc), w)
-    M = similar(S)
-    for i in eachindex(w)
-        # Change of basis from the instants within the period to the aliased frequencies
-        W = [cis(-(w[i] + m * Ω) * port.times[r]) / sqrt(n) for m in 0:n-1, r in 1:n]
-        M[:, :, i] = W * S[:, :, i] * W' + (σ - 1) / 2 * I
+    M0 = ss(F, G, H, E + (σ - 1) / 2 * I, ml.Tc)
+    hinf, ωinf = hinfnorm2(M0)
+    disk_margin_dynamic = Diskmargin(1 / hinf, σ; ω0 = ωinf)
+    if n == 1
+        disk_margin_lti_lower_bound = disk_margin_dynamic
+    else
+        w = range(0, Ω, length = N + 1)[1:end-1]
+        M = freqresp(M0, w)
+        for i in eachindex(w)
+            # Change of basis from the instants within the period to the aliased frequencies
+            W = [cis(-(w[i] + m * Ω) * port.times[r]) / sqrt(n) for m in 0:n-1, r in 1:n]
+            M[:, :, i] = W * M[:, :, i] * W'
+        end
+        μ = structured_singular_value(M)
+        i1 = argmax(μ)
+        disk_margin_lti_lower_bound = Diskmargin(1 / μ[i1], σ; ω0 = w[i1])
     end
-    μ = n == 1 ? vec(abs.(M)) : structured_singular_value(M)
-    full = [opnorm(M[:, :, i]) for i in eachindex(w)]
-    i1, i2 = argmax(μ), argmax(full)
-    (; gain_interval,
-        disk_margin_lti_lower_bound = Diskmargin(1 / μ[i1], σ; ω0 = w[i1]),
-        disk_margin_dynamic = Diskmargin(1 / full[i2], σ; ω0 = w[i2]))
+    (; gain_interval, disk_margin_lti_lower_bound, disk_margin_dynamic)
 end
 
 function multirate_margins(sys::ModelingToolkit.AbstractSystem, ap; σ = 0, N = 400, oversample = 1, t0 = 0.0, continuous_rate = :fastest, tol = 1e-9, kwargs...)
@@ -569,9 +612,10 @@ A time-invariant approximation of a hybrid model with several clocks, obtained b
 all partitions of the `ModelingToolkit.HybridLinearization` `hl` to one common rate and
 closing the connections between them. `Ts = 0` gives a continuous-time system, in which each
 clocked partition is converted with `d2c`. With `Ts > 0`, the continuous-time partition is
-discretized with `c2d` and each clocked partition with a different sample interval is
-converted to continuous time and discretized again. `method` and `w_prewarp` are passed to
-`c2d` and `d2c`.
+discretized with `c2d`, a clocked partition with the sample interval `Ts` is used as it is,
+and each other clocked partition is converted to continuous time and discretized again.
+`method` and `w_prewarp` are passed to `c2d` and `d2c`. The phases of the clocks are not
+represented.
 
 The result is an approximation: a model with several clocks is periodically time varying,
 and aliasing between the rates is not represented. In the continuous-time result the holds
