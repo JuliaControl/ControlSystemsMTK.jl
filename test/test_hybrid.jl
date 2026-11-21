@@ -99,6 +99,15 @@ if isdefined(ModelingToolkit, :linearize_hybrid)
         ]
         @named multirate = System(eqs, t)
         @test_throws "same periodic clock" named_ss(multirate, [d], [x]; op = Dict(x => 0.0, d => 0.0, w => 0.0, v => 0.0))
+
+        # Direct feedthrough from a held signal to a sampled signal
+        eqs = [
+            D(x) ~ -x + Hold(ud) + d
+            y ~ x + Hold(ud)
+            ud ~ -0.5 * Sample(dt)(y)
+        ]
+        @named feedthrough = System(eqs, t)
+        @test_throws "direct feedthrough" named_ss(feedthrough, [d], [x]; op = Dict(x => 0.0, d => 0.0))
     end
 else
     @testset "Hybrid linearization unavailable" begin

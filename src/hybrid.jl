@@ -88,7 +88,8 @@ realization of a partition was changed during the assembly.
 If the model has clocked partitions, the result is a discrete-time system: the continuous
 partition is discretized with zero-order hold at the sample interval of the clock, and the
 connections across the clock boundaries are closed. All clocked partitions are required to
-be on the same periodic clock.
+be on the same periodic clock, and the continuous partition must not have direct feedthrough
+from a held signal to a sampled signal.
 """
 function hybrid_ss(hl; descriptor = true, simple_infeigs = true, balance = false, big = false)
     partitions = hl.partitions
@@ -116,6 +117,16 @@ function hybrid_ss(hl; descriptor = true, simple_infeigs = true, balance = false
             P = ss(p.A, p.B, p.C, p.D)
         end
         Ts === nothing ? P : c2d(P, Ts)
+    end
+    if ci !== nothing
+        # A sampled signal with direct feedthrough from a held signal depends on the value
+        # that was held before the tick, which the instantaneous connection below does not
+        # represent
+        held = unique(c.input for c in hl.connections if c.to == ci)
+        sampled = unique(c.output for c in hl.connections if c.from == ci)
+        if !iszero(systems[ci].D[sampled, held])
+            throw(ArgumentError("The continuous-time partition has direct feedthrough from a held signal to a sampled signal. The assembly of such a model into a single system is not supported. Use `ModelingToolkit.linearize_hybrid` and assemble the partitions manually."))
+        end
     end
     A = cat((s.A for s in systems)...; dims = (1, 2))
     B = cat((s.B for s in systems)...; dims = (1, 2))
