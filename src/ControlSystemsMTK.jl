@@ -52,6 +52,7 @@ const DEFAULT_LINEARIZE_KWARGS = (;
         inline_linear_sccs = true, analytical_linear_scc_limit = 1),
 )
 
+include("hybrid.jl")
 include("ode_system.jl")
 # include("symbolic_optimization.jl")
 
