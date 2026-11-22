@@ -54,7 +54,14 @@ function lifted_system_errors(dtfast, ratio; feedthrough, input_feedthrough = 0.
     dport, rport = ml.inputs
     nd = length(dport.times)
     NU = nd + 1
-    @test length(rport.times) == 1
+    # The instants of the signals, derived from the clocks independently of the model: the
+    # period starts at a tick of the fast clock, at which d, y and w have their first instant
+    slowtick = phase + dtslow * ceil((t0 - phase) / dtslow)
+    @test dport.times ≈ t0 .+ dtfast .* (0:ratio-1)
+    @test rport.times ≈ [slowtick]
+    @test ml.outputs[1].times ≈ dport.times
+    @test ml.outputs[2].times ≈ dport.times
+    @test ml.outputs[3].times ≈ [slowtick]
 
     # The simulated model: `d` takes the values `dv` on the intervals that start at the
     # instants of its port, and the reference takes the value `rv` during the period
@@ -113,11 +120,18 @@ function lifted_system_errors(dtfast, ratio; feedthrough, input_feedthrough = 0.
     # held values of z and w, and the held value of d. `simulated[i]` is the index among the
     # simulated variables (xc, w, z, held z) that the state variable i equals before an
     # event, and zero for the held d, which is not a variable of the simulated model.
+    @test length(ml.x) == 6
     simulated = map(ml.x) do name
         n = string(name)
-        occursin("hold(d", n) ? 0 : occursin("hold(z", n) ? 4 : occursin("xc", n) ? 1 : occursin("w", n) ? 2 : 3
+        n == "hold(d(t))" ? 0 : n == "hold(z(t))" ? 4 : n == "hold(w(t))" ? 2 : n == "xc(t)" ? 1 :
+        n == "wₜ₋₁(t)" ? 2 : n == "zₜ₋₁(t)" ? 3 : error("Unexpected state variable $n")
     end
     known = findall(!iszero, simulated)
+    # The held d is not a variable of the simulated model. After a period it equals the last
+    # value of d in the period, irrespective of the state at the start of the period.
+    held_d = only(findall(iszero, simulated))
+    @test iszero(F[held_d, :])
+    @test G[held_d, :] == (1:NU .== dport.channels[end])
     M = [Float64(simulated[i] == j) for i in eachindex(simulated), j in 1:4]
     # Jacobian of the state at the start of the period
     if t0 > 0
@@ -128,7 +142,7 @@ function lifted_system_errors(dtfast, ratio; feedthrough, input_feedthrough = 0.
         # partition before it is read.
         initial = map(ml.x) do name
             n = string(name)
-            occursin("hold(z", n) ? 4 : occursin("hold", n) ? 0 : occursin("xc", n) ? 1 : occursin("w", n) ? 2 : 3
+            n == "hold(z(t))" ? 4 : startswith(n, "hold") ? 0 : n == "xc(t)" ? 1 : n == "wₜ₋₁(t)" ? 2 : 3
         end
         X0 = [Float64(i == j) for i in initial, j in 1:nθ]
     end

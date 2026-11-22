@@ -3,9 +3,9 @@
 A *hybrid* model contains clocked (discrete-time) partitions, such as digital controllers, that are connected to continuous-time equations through the operators `Sample` and `Hold`. This page describes how such models are linearized and analyzed:
 
 - With a single clock, the model sampled at the clock is time invariant, and [`named_ss`](@ref) and the `get_named_*` functions return a discrete-time system.
-- With several clocks, the model is *periodically time varying*. It has no transfer function, and the functions on this page provide the representations and the frequency-domain quantities that replace it.
+- With several clocks, the model is in general *periodically time varying*. It then has no transfer function between its signals, and the functions on this page provide the representations and the frequency-domain quantities that replace it.
 
-The linearization of each clock partition is performed by `ModelingToolkit.linearize_hybrid`. Throughout, the model is linearized in a *stationary operating point*: an equilibrium of the continuous-time equations at which the state variables of the clocked partitions do not change at the ticks. All statements on this page concern this linearization.
+The linearization of each clock partition is performed by `ModelingToolkit.linearize_hybrid`. Throughout, the model is linearized in a *stationary operating point*: an equilibrium of the continuous-time equations at which the state variables of the clocked partitions do not change at the ticks. Each partition is represented by one set of Jacobians, evaluated at the operating point and the time of the linearization; a model that depends explicitly on time is not represented. All statements on this page concern this linearization.
 
 ## A model with one clock
 
@@ -66,7 +66,7 @@ slow(signal) = Sample(Tslow)(Hold(signal))
 nothing # hide
 ```
 
-`named_ss` rejects a model with several clocks, since no time-invariant system with the signals of the model as inputs and outputs represents it:
+`named_ss` rejects every model with several clocks, since in general no time-invariant system with the signals of the model as inputs and outputs represents it:
 
 ```@example MULTIRATE
 try
@@ -86,11 +86,11 @@ The consequence in the frequency domain is that, for a stable model, a sinusoida
 \omega + k\,\dfrac{2\pi}{T_c}, \qquad k = 0, \pm 1, \pm 2, \ldots
 ```
 
-The component with ``k = 0`` is the *fundamental* component, the others are *harmonics* created by sampling and holding (aliasing). A time-invariant system produces the fundamental component only. An output that is observed at ``n_y`` uniformly spaced instants per period distinguishes ``n_y`` of these components, ``k = 0, \ldots, n_y - 1``; the remaining ones coincide with these at the instants of observation.
+The component with ``k = 0`` is the *fundamental* component, the others are *harmonics* created by sampling and holding (aliasing). A time-invariant system produces the fundamental component only. An output that is observed at ``n_y`` uniformly spaced instants per period distinguishes ``n_y`` classes of these components, ``k = 0, \ldots, n_y - 1``: the components ``k`` and ``k + n_y`` differ by a constant factor at the instants of observation, and each reported harmonic contains all components of its class.
 
 ### The periodic model and the lifted system
 
-[`multirate_linearization`](@ref) creates a linear periodic model on the *event grid*, the sorted set of instants within one period at which a clock ticks or a signal of the continuous-time partition is updated. The period is the least common multiple of the clock periods, which are required to be commensurate.
+[`multirate_linearization`](@ref) creates a linear periodic model on the *event grid*, the sorted set of instants within one period at which a clock ticks, an input of the continuous-time partition is updated, or an output of the continuous-time partition is observed. The period is the least common multiple of the clock periods, which are required to be commensurate.
 
 ```@example MULTIRATE
 ml = multirate_linearization(multi, [d, r], [y, ud]; op)
@@ -111,7 +111,7 @@ Each signal has a set of instants within the period: the ticks of its clock for 
 
 1. Inputs of the continuous-time partition that are specified by the user take their new values, if the event is an instant of their grid.
 2. The signals of the continuous-time partition that are sampled are evaluated with the values that the clocked partitions held before the event. A sampled signal that depends directly on a held signal thus contains the previously held value.
-3. The clocked partitions that tick compute their outputs and update their state variables. A partition that reads a signal of another clocked partition that ticks at the same instant reads the new value. Partitions whose outputs depend directly on each other at the same instant are rejected as not causal.
+3. The clocked partitions that tick compute their outputs from their state variables before the event, and then update their state variables. A partition that reads a clocked signal that is computed at the same instant reads the new value. Outputs that depend directly on each other in a cycle are rejected, also if the cycle could be solved algebraically.
 4. The held values are updated, and the outputs of the continuous-time partition that are specified by the user are observed, if the event is an instant of their grid.
 5. The continuous-time partition is integrated exactly to the next event with constant inputs.
 
@@ -153,7 +153,7 @@ plot!(Tslow .* (0:nperiods-1), res.y[end, :], label = "ud", linetype = :steppost
 
 ### Stability
 
-The eigenvalues of the monodromy matrix are the *characteristic multipliers* of the periodic model. The linearization is exponentially stable if and only if all multipliers have a magnitude smaller than one. The multipliers do not depend on the choice of inputs, outputs and grids.
+The eigenvalues of the monodromy matrix are the *characteristic multipliers* of the periodic model. The linearization is exponentially stable if and only if all multipliers have a magnitude smaller than one. For a given interconnection, the nonzero multipliers do not depend on the choice of inputs, outputs and grids; the number of multipliers that are zero does, since the model contains one hold variable per input of the continuous-time partition.
 
 ```@example MULTIRATE
 λ = multipliers(ml)
@@ -177,15 +177,15 @@ the values of the sinusoid ``e^{i\omega t}`` at the instants of a port ``s``. Th
 | [`fundamental_response`](@ref) | ``a_y(\omega)^* G_L(e^{i\omega T_c})\, a_u(\omega) / n_y`` | Complex amplitude of the fundamental component of the output |
 | [`harmonic_response`](@ref) | ``a_y(\omega + 2\pi k/T_c)^* G_L(e^{i\omega T_c})\, a_u(\omega) / n_y`` | Complex amplitude of harmonic ``k`` |
 | [`performance_frequency_gain`](@ref) | ``\lVert G_L(e^{i\omega T_c})\, a_u(\omega)\rVert_2 / \sqrt{n_y}`` | Root-mean-square gain for one sinusoid, all harmonics included |
-| [`robust_frequency_gain`](@ref) | ``\bar\sigma\big(G_L(e^{i\omega T_c})\big)`` | Largest gain over inputs that contain several of the frequencies ``\omega + 2\pi k/T_c`` |
+| [`robust_frequency_gain`](@ref) | ``\bar\sigma\big(G_L(e^{i\omega T_c})\big)`` | Largest gain, in terms of the energy of the sequences of values, over inputs that contain several of the frequencies ``\omega + 2\pi k/T_c`` |
 
-The functions require the instants of each port to be uniformly spaced. They satisfy
+The first three functions require the instants of each port to be uniformly spaced. The functions satisfy
 
 ```math
 |\text{fundamental response}| \le \text{performance frequency gain} \le \sqrt{n_u/n_y}\;\text{robust frequency gain}
 ```
 
-and the squared performance frequency gain is the sum of the squared magnitudes of the harmonics ``k = 0, \ldots, n_y - 1``. For a time-invariant system, the fundamental response is the frequency response and the performance frequency gain is its magnitude. The robust frequency gain is periodic in ``\omega`` with period ``2\pi/T_c`` also for a time-invariant system, for which it is the largest magnitude of the frequency response among the frequencies ``\omega + 2\pi k/T_c``.
+and the squared performance frequency gain is the sum of the squared magnitudes of the harmonics ``k = 0, \ldots, n_y - 1``. For a discrete-time time-invariant system between two signals on the same grid, the fundamental response is the frequency response and the performance frequency gain is its magnitude. The robust frequency gain is periodic in ``\omega`` with period ``2\pi/T_c`` also for such a system, for which it is the largest magnitude of the frequency response among the frequencies ``\omega + 2\pi k/T_c``. A continuous-time time-invariant plant between a held input and a sampled output is in general not of this kind.
 
 ```@example MULTIRATE
 w = exp10.(range(-1, log10(π / Tfast), length = 400))
@@ -196,7 +196,7 @@ plot!(w, robust_frequency_gain(ml, "d(t)", "y(t)", w), label = "Robust frequency
 vline!([π / Tslow], label = "Nyquist frequency of the slow clock", linestyle = :dash, color = :black)
 ```
 
-The fundamental response and the performance frequency gain agree at frequencies where the harmonics are small. The ratio between them measures the part of the response to a sinusoid of that frequency that appears at other frequencies, among the components that the output distinguishes. For an output with one instant per period the ratio is one irrespective of the behavior between the instants. The harmonics themselves show to which frequencies the input is converted:
+The fundamental response and the performance frequency gain agree at frequencies where the harmonics are small. The part of the power of the sampled output that appears at other frequencies than that of the input is ``1 - |H_0|^2/\mathrm{PFG}^2``, where ``H_0`` is the fundamental response and PFG the performance frequency gain, among the classes of components that the output distinguishes. For an output with one instant per period this part is zero irrespective of the behavior between the instants. The harmonics themselves show to which frequencies the input is converted:
 
 ```@example MULTIRATE
 plot(xscale = :log10, yscale = :log10, xlabel = "Frequency of the input [rad/s]", title = "Harmonics of y for a sinusoidal d", legend = :bottomleft, ylims = (1e-6, 10))
@@ -209,12 +209,12 @@ current()
 The following properties determine how the functions may be used.
 
 - The fundamental response is not a transfer function: it is not the ratio between the transforms of the output and the input. Neither stability nor stability margins can be concluded from it.
-- The functions describe an input that is held on its grid and an output that is observed on its grid. Goodwin and Salgado (1994) define *fundamental sensitivity functions* for continuous-time sinusoids and continuous-time outputs, which the fundamental response of a sensitivity function approaches as the grid of the continuous-time signals is refined, see the next section. For these, a peak that violates the weighted bound of the applicable result excludes robust stability for the corresponding class of plant perturbations, whereas a small peak is not a proof of robustness (Seron, Braslavsky and Goodwin, 1997).
-- For a stable model, the supremum over frequency of the robust frequency gain is the induced norm between the sequences of sampled signals.
+- The functions describe an input that is held on its grid and an output that is observed on its grid. Goodwin and Salgado (1994) define *fundamental sensitivity functions* for continuous-time sinusoids and continuous-time outputs, which the fundamental response of a sensitivity function approaches as the grid of the continuous-time signals is refined, see the next section. For a loop with one clock, robust stability for multiplicative plant perturbations with the weight ``W_1`` requires ``\lVert T^0 W_1\rVert_\infty \le 1``, and for divisive perturbations with the weight ``W_2`` it requires ``\lVert S^0 W_2\rVert_\infty \le 1``, where ``S^0`` and ``T^0`` are the fundamental sensitivity and complementary sensitivity functions (Seron, Braslavsky and Goodwin, 1997). These conditions are necessary and not sufficient: a small peak is not a proof of robustness.
+- For a stable model, the supremum over frequency of the robust frequency gain is the induced ``\ell_2`` norm from the sequence of values of the input to the sequence of values of the output.
 
 ### Behavior between the ticks
 
-Inputs and outputs of the continuous-time partition are represented on a uniform grid, the interval of which is the smallest clock period divided by the keyword argument `oversample`. A larger value refines both the hold of the inputs and the observation of the outputs without changing the ticks of the clocks. The frequency functions between such signals then extend to higher frequencies and include the response between the ticks, whereas signals of clocked partitions keep their rates. `continuous_rate = :period` instead selects the common period as interval, which gives one channel per signal; `oversample` is then not used.
+Inputs and outputs of the continuous-time partition are represented on a uniform grid, the interval of which is the smallest clock period divided by the keyword argument `oversample`. A larger value refines both the hold of the inputs and the observation of the outputs without changing the ticks of the clocks. The frequency functions between such signals then extend to higher frequencies and include the response between the ticks, whereas signals of clocked partitions keep their rates. `continuous_rate = :period` instead selects the common period as interval, which gives one channel per signal of the continuous-time partition, whereas signals of clocked partitions keep their instants; `oversample` is then not used.
 
 ```@example MULTIRATE
 ml4 = multirate_linearization(multi, [d, r], [y, ud]; op, oversample = 4)
@@ -224,13 +224,13 @@ plot(w, performance_frequency_gain(ml, "d(t)", "y(t)", w), label = "oversample =
 plot!(w4, performance_frequency_gain(ml4, "d(t)", "y(t)", w4), label = "oversample = 4")
 ```
 
-The stability of the model does not depend on the grid:
+The stability of the model, and its nonzero multipliers, do not depend on the grid:
 
 ```@example MULTIRATE
 maximum(abs, multipliers(ml4)) ≈ maximum(abs, multipliers(ml))
 ```
 
-Refinement of the grid approximates the gains between continuous-time signals, provided that these are bounded: an ideal sampler that observes a signal with direct feedthrough from an arbitrary input does not define a bounded operator. No bound on the difference is available for a finite `oversample`.
+Refinement of the grid approximates the gains between continuous-time signals (Yamamoto, Madievski and Anderson, 1999), provided that these are bounded: an ideal sampler that observes a signal with direct feedthrough from an arbitrary input does not define a bounded operator. The implementation supplies no bound on the error for a finite `oversample`.
 
 ### Sensitivity functions
 
@@ -252,15 +252,17 @@ In a time-invariant loop, a gain or phase margin states how much one perturbatio
 
 | Field | Perturbation | Property |
 |:---|:---|:---|
-| `gain_interval` | A constant real positive gain | Numerical estimate of the interval of gains, containing the gain one, for which the loop is stable |
+| `gain_interval` | A constant real positive gain | Numerical estimate of the interval of gains, containing the gain one, for which the loop is stable and well posed |
 | `disk_margin_lti_lower_bound` | A time-invariant dynamic system at the rate of the signal | A lower bound of the disk margin on a frequency grid |
 | `disk_margin_dynamic` | An arbitrary dynamic system that acts on the lifted signal | Disk margin for this class, conservative for time-invariant perturbations |
 
-The gain interval is located by a search outward from the gain one, which can miss an interval of unstable gains that is narrower than the step of the search. A limit of `0` or `Inf` states that no boundary was found within the search range.
+The margins are computed from the sensitivity function ``S`` at the break point, which is required to be stable and to have one signal with uniformly spaced instants as input and output. With ``R`` denoting the loop-transfer function that `get_looptransfer` returns, which includes the sign of the feedback, ``S = (1 - R)^{-1}``, and the loop-transfer function in the convention of negative feedback is ``L = -R``.
 
-A time-invariant perturbation ``\Delta`` at the rate of the signal acts on the frequencies ``\omega + 2\pi k/T_c``, ``k = 0, \ldots, n-1``, with the values ``\Delta(e^{i(\omega + 2\pi k/T_c)T_c/n})``. For a complex perturbation without further restrictions these values are independent of each other. In the basis of these frequencies the perturbation is diagonal, and the margin follows from the structured singular value with ``n`` independent complex scalars, for which an upper bound is computed on a grid of frequencies. The result is therefore a lower bound of the margin on that grid, and a peak between the frequencies of the grid is not detected. A perturbation with real coefficients, with a fixed order, or in the form of a delay belongs to a smaller class and can have a larger margin. The structure of the perturbation follows Dullerud and Glover (1993), who treat perturbations of a continuous-time plant.
+**Gain interval.** The gains at which the loop is not well posed are computed from the feedthrough matrix of the lifted sensitivity function. The loss of stability is located by a search outward from the gain one in steps of 0.2 % within the range ``(10^{-4}, 10^4)``, followed by bisection. The search can miss an interval of unstable gains that is narrower than the step. A limit of `0` or `Inf` states that no boundary was found within the range.
 
-The class of arbitrary dynamic systems that act on the lifted signal contains the periodically time-varying perturbations, and also systems that are not causal within a period, in which a value late in the period influences an earlier one. Its margin is computed from the H∞ norm of the lifted system.
+**Time-invariant perturbations.** A time-invariant perturbation ``\Delta`` at the rate of the signal acts on the frequencies ``\omega + 2\pi k/T_c``, ``k = 0, \ldots, n-1``, with the values ``\Delta(e^{i(\omega + 2\pi k/T_c)T_c/n})``. For a complex perturbation without further restrictions these values are independent of each other. In the basis of these frequencies the perturbation is diagonal, and the margin follows from the structured singular value with ``n`` independent complex scalars, for which an upper bound is computed on a grid of `N` frequencies. The result is therefore a lower bound of the margin on that grid, and a peak between the frequencies of the grid is not detected. A perturbation with real coefficients, with a fixed order, or in the form of a delay belongs to a smaller class and can have a larger margin. The structure of the perturbation follows Dullerud and Glover (1993), who treat perturbations of a continuous-time plant.
+
+**Dynamic perturbations of the lifted signal.** This class contains the periodically time-varying perturbations, and also systems that are not causal within a period, in which a value late in the period influences an earlier one. The radius of the disk is ``1/\lVert S_L + (\sigma - 1)I/2\rVert_\infty``, where ``S_L`` is the lifted sensitivity function and ``\sigma`` the skew.
 
 The disk margins are `RobustAndOptimalControl.Diskmargin` objects, see [the documentation of disk margins](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Diskmargin-example). They are comparable with each other at the same skew, and not with the gain interval, which concerns a different kind of perturbation.
 
@@ -283,9 +285,9 @@ m.disk_margin_lti_lower_bound
 m.disk_margin_dynamic
 ```
 
-Of the two disk margins, the one for the larger class of perturbations is the smaller. If the break point has one instant per period, the loop seen from the break point is time invariant, and both disk margins equal `RobustAndOptimalControl.diskmargin` of the loop-transfer function.
+The disk margin for the larger class of perturbations is not larger than the margin for the smaller class; the computed lower bound for time-invariant perturbations is compared with it in the example above. If the break point has one instant per period, the loop seen from the break point is time invariant, and the radius of both disk margins agrees with `RobustAndOptimalControl.diskmargin(L, σ)` for the loop-transfer function ``L = -R``.
 
-All margins apply to the signal as it is represented in the periodic model. For an analysis point in the continuous-time partition, the perturbation acts between the observation of the signal on its grid and a hold on that grid. The margins then apply to the continuous-time signal itself only if the perturbation can be moved across a sampler or a hold on the same branch without changing the loop, as for a constant gain directly at the output of a hold whose clock is the grid. Margins for dynamic perturbations of a continuous-time signal, such as a delay margin, are not provided.
+All margins apply to the signal as it is represented in the periodic model. For an analysis point in the continuous-time partition, the perturbation acts between the observation of the signal on its grid and a hold on that grid. The margins then apply to the continuous-time signal itself only if moving the perturbation to the grid changes no value that is sampled from the signal, including a value that is read at an instant that coincides with an instant of the grid: a sampler reads the previously held value of a clocked signal, but the new value of a perturbation that enters on the grid. A physical gain can alternatively be analyzed at a break point in the clocked partition that drives the hold. Margins for dynamic perturbations of a continuous-time signal, such as a delay margin, are not provided.
 
 ### A time-invariant approximation
 
@@ -310,17 +312,18 @@ In this example, the magnitude of the approximation agrees with the fundamental 
 | Simulation and norms with tools for time-invariant systems | [`lifted_ss`](@ref) | Exact at the instants of the signals |
 | Loop shaping, location of a peak in frequency | [`fundamental_response`](@ref), [`harmonic_response`](@ref) | Exact amplitude of each component; no certificate of stability or robustness |
 | Detection of aliasing | [`performance_frequency_gain`](@ref) in relation to the fundamental response | Among the components that the output distinguishes |
-| Largest gain | [`robust_frequency_gain`](@ref) | Induced norm between the sampled sequences |
+| Largest gain | [`robust_frequency_gain`](@ref) | For a stable model, its supremum over frequency is the induced ``\ell_2`` norm between the sequences of values of the selected signals |
 | Margins | [`multirate_margins`](@ref) | Per class of perturbations, see above |
 | A rational model at one rate | [`single_rate_ss`](@ref) | Approximation |
 
 ## Limitations
 
 - The linearization is required to be performed in a stationary operating point of the whole model: an equilibrium of the continuous-time partition at which the state variables of the clocked partitions are constant. This is not verified. A model that settles on a periodic orbit rather than an equilibrium is not supported.
-- The clocks are required to be periodic with commensurate periods. Events, state machines and clocks without a fixed period are not accounted for.
+- Each partition is represented by one set of Jacobians. A model whose equations depend explicitly on time has Jacobians that vary over the period also in a stationary operating point, and is not represented.
+- The clocks are required to be periodic with commensurate periods. The ratios between the periods are approximated by rational numbers within the tolerance `tol`, and ratios with a numerator or denominator above 10000 are rejected. Events, state machines and clocks without a fixed period are not accounted for.
 - The lifted system has one channel per instant of each signal. A common period that is large in relation to the fastest clock gives a large number of channels.
 - Ticks of different clocks that are closer than `tol*Tc` are treated as simultaneous. In a simulation, tick times that are computed in floating-point arithmetic can separate ticks that coincide mathematically (as for the periods 0.1 and 0.3), and the partitions are then evaluated in the order of their tick times.
-- Clocked partitions that tick at the same instant and whose outputs depend directly on each other are rejected.
+- Outputs of clocked partitions that tick at the same instant and depend directly on each other in a cycle are rejected, also if the cycle could be solved algebraically.
 - The connection between two clocked partitions is expressed as `Sample(Hold(x))` in ModelingToolkit and as `Latest` in SynchToolkit. Both are treated according to item 3 of the operations at an event. This was compared with simulations of models compiled with SynchToolkit, with `Latest` and clock ratios of two and three.
 - If the inputs are specified through analysis points, they are required to belong to one clock partition, and correspondingly for the outputs, since their order cannot be recovered otherwise.
 - A lifted system used for synthesis requires a controller that respects the chronological order of the channels within the period, which standard synthesis methods do not enforce.
@@ -335,4 +338,5 @@ In this example, the magnitude of the approximation agrees with the fundamental 
 - M. van Haren, L. Blanken and T. Oomen, "Performance analysis of multirate systems: a direct frequency-domain identification approach", *Mechanical Systems and Signal Processing* 235, 2025.
 - G. Dullerud and K. Glover, "Robust stabilization of sampled-data systems to structured LTI perturbations", *IEEE Transactions on Automatic Control* 38(10), 1993.
 - P. M. Thompson, "Gain and phase margins of multi-rate sampled-data feedback systems", *International Journal of Control* 44(3), 1986.
+- Y. Yamamoto, A. G. Madievski and B. D. O. Anderson, "Approximation of frequency response for sampled-data control systems", *Automatica* 35(4), 1999.
 - P. Seiler, A. Packard and P. Gahinet, "An introduction to disk margins", *IEEE Control Systems Magazine* 40(5), 2020.

@@ -58,6 +58,8 @@ function simulate_reference(dfun, rfun, nperiods; gain = gv, x0 = zeros(5))
     ys, ws, uds
 end
 
+# The tests below require `ModelingToolkit.linearize_hybrid`
+@test isdefined(ModelingToolkit, :linearize_hybrid)
 if isdefined(ModelingToolkit, :linearize_hybrid)
 
 ml = multirate_linearization(loop, [d, r], [y, w, ud]; op)
@@ -242,6 +244,97 @@ end
         @test m.disk_margin_dynamic.α <= m.disk_margin_lti_lower_bound.α + 1e-6
         @test m.disk_margin_lti_lower_bound.γmax <= gmax + 1e-6
     end
+end
+
+@testset "Non-nested clocks" begin
+    # The periods 2dtf and 3dtf have the common period 6dtf
+    ka = ShiftIndex(Clock(2dtf))
+    kb = ShiftIndex(Clock(3dtf))
+    @variables wa(t) zb(t)
+    eqs = [
+        D(x) ~ -x + Hold(zb) + d
+        wa(ka) ~ 0.5 * wa(ka - 1) + 0.5 * Sample(2dtf)(x)
+        zb(kb) ~ 0.6 * zb(kb - 1) - 0.3 * Sample(3dtf)(Hold(wa))
+    ]
+    @named nonnested = System(eqs, t)
+    mln = multirate_linearization(nonnested, [d], [x]; op = Dict(x => 0.0, d => 0.0, wa => 0.0, zb => 0.0))
+    @test mln.Tc ≈ 6dtf
+    @test mln.event_times ≈ dtf .* [0, 2, 3, 4]
+    # One period of the equations on the grid with interval dtf, with the state (x, wa, zb)
+    function period(v)
+        xv, wv, zv = v
+        a = exp(-dtf)
+        for m in 0:5
+            m % 2 == 0 && (wv = 0.5 * wv + 0.5 * xv)
+            m % 3 == 0 && (zv = 0.6 * zv - 0.3 * wv)
+            xv = a * xv + (1 - a) * zv
+        end
+        [xv, wv, zv]
+    end
+    Mref = reduce(hcat, period.(eachcol(Matrix(1.0I, 3, 3))))
+    nonzero(λ) = sort(filter(l -> abs(l) > 1e-8, λ), by = abs)
+    @test nonzero(multipliers(mln)) ≈ nonzero(eigvals(Mref))
+end
+
+@testset "A signal read within its own partition" begin
+    @variables pp(t) qq(t) uu(t)
+    eqs = [
+        pp(kf) ~ 0.25 * pp(kf - 1) + uu(kf)
+        qq(kf) ~ Sample(dtf)(Hold(pp))
+    ]
+    @named selfread = System(eqs, t)
+    ops = Dict(pp => 0.0, qq => 0.0, uu => 0.0)
+    mls = multirate_linearization(selfread, [uu], [qq, pp]; op = ops)
+    Gs = lifted_ss(mls)
+    # Both outputs contain the input of the same tick
+    @test Gs.D ≈ [1; 1]
+    z = tf("z", dtf)
+    wv = exp10.(range(-1, log10(π / dtf), length = 20))
+    @test freqresp(Gs.sys, wv) ≈ freqresp([z / (z - 0.25); z / (z - 0.25)], wv)
+end
+
+@testset "Event schedule" begin
+    using ControlSystemsMTK: event_schedule, common_period
+    # Instants that coincide within the tolerance across the boundary of the period are one
+    # event, irrespective of the start of the period
+    clocks = Dict(1 => (1.0, 1 - 5e-9), 2 => (10.0, 0.0))
+    for t0 in (0.0, 0.5, 3.0)
+        times, eticks, ticks = event_schedule(clocks, 10.0, t0, 1e-8)
+        @test length(times) == 10
+        @test count(e -> haskey(e, 2), eticks) == 1
+        @test all(e -> haskey(e, 1), eticks)
+        @test t0 - 1e-7 <= minimum(times) && maximum(times) < t0 + 10
+        @test issorted(times) && issorted(ticks[1])
+    end
+    @test_throws "not commensurate" common_period([1.0, 0.0010000005])
+    @test common_period([0.125, 0.375, 0.25]) ≈ 0.75
+end
+
+@testset "Margins of given sensitivity functions" begin
+    # A periodic model with one event, one scalar signal and the sensitivity function
+    # H*inv(z*I - F)*G + E
+    function sensitivity_model(F, G, H, E, Tc)
+        port = MultiratePort(:s, [0.0], [1], 1)
+        MultirateLinearization([F], [G], [H], [E], [[1]], Tc, 0.0, [0.0], [Symbol("x$i") for i in axes(F, 1)], [port], [port], nothing)
+    end
+    # S = 1.5 - z^-2: with zero skew the disk margin is 1/‖1 - z^-2‖∞ = 1/2, attained where z^2 = -1
+    Tc = 0.125
+    m = multirate_margins(sensitivity_model([0.0 0; 1 0], [1.0; 0;;], [0.0 -1], [1.5;;], Tc))
+    @test m.disk_margin_dynamic.α ≈ 0.5 rtol = 1e-4
+    @test m.disk_margin_dynamic.ω0 ≈ π / (2Tc) rtol = 1e-2
+    @test m.disk_margin_lti_lower_bound.α ≈ 0.5 rtol = 1e-4
+    # A loss of stability immediately before the gain at which the loop is not well posed
+    m = multirate_margins(sensitivity_model([0.0;;], [1e-4;;], [1.0;;], [2.0;;], Tc))
+    @test m.gain_interval[2] ≈ (2 + 1e-4) / (1 + 1e-4) rtol = 1e-9
+    # A static sensitivity function S = 3 corresponds to the loop-transfer function -2/3,
+    # for which the loop is not well posed at the gain 3/2
+    m = multirate_margins(sensitivity_model([0.0;;], [0.0;;], [0.0;;], [3.0;;], Tc))
+    @test m.gain_interval == (0.0, 1.5)
+    # A feedthrough matrix with poor conditioning is well posed for all gains
+    port = MultiratePort(:s, [0.0, Tc / 2], [1, 2], 1)
+    mlc = MultirateLinearization([zeros(0, 0), zeros(0, 0)], [zeros(0, 2), zeros(0, 2)], [zeros(1, 0), zeros(1, 0)],
+        [[1.0 0], [1e7 1]], [[1], [2]], Tc, 0.0, [0.0, Tc / 2], Symbol[], [port], [port], nothing)
+    @test multirate_margins(mlc).gain_interval == (0.0, Inf)
 end
 
 @testset "Unsupported models" begin
