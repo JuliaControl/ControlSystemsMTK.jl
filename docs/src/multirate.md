@@ -46,12 +46,34 @@ G = named_ss(single, [d], [y]; op, hybrid = true)
 
 The result is the system from the disturbance `d` to the output `y` with the loop closed: the continuous-time partition is discretized with zero-order hold at the period of the clock and connected to the linearization of the controller. The disturbance is consequently assumed to be constant between the ticks of the clock, and the output is obtained at the ticks only. A model in which a sampled signal depends directly on a held signal is not accepted by this assembly; [`multirate_linearization`](@ref) below represents it. The keyword argument `hybrid = true` selects this linearization. It is the default when a discrete compilation pass such as `SynchToolkit.compile_lustre` is supplied in `additional_passes`, which is how hybrid models are compiled for simulation.
 
-The sensitivity functions are obtained in the same way, here for a model in which the disturbance is absent:
+The same system is obtained by performing these steps explicitly: the plant and the controller are linearized individually, the plant is discretized with [`c2d`](@ref), and the loop is closed with [`feedback`](@ref).
+
+```@example MULTIRATE
+# The continuous-time plant, from its input to its output
+@named plant_model = System([plant; d ~ 0], t)
+P = named_ss(plant_model, [u], [y]; op = Dict(x1 => 0.0, x2 => 0.0, u => 0.0))
+
+# The clocked controller, from the measurement to the controller output
+@variables ym(t)
+@named controller_model = System([controller(ym); r ~ 0], t)
+C = named_ss(controller_model, [ym], [ud]; op = Dict(xi => 0.0, ym => 0.0), hybrid = true)
+
+Pd = c2d(P.sys, Tslow) # Zero-order hold at the period of the clock
+# The disturbance enters at the plant input, and the controller contains the sign of the feedback
+G_explicit = feedback(Pd, -C.sys)
+
+bodeplot(G.sys, label = "named_ss of the hybrid model", title = "From d to y", legend = :bottomleft)
+bodeplot!(G_explicit, label = "c2d and feedback", linestyle = :dash)
+```
+
+The sensitivity functions are obtained in the same way, here for a model in which the disturbance is absent. The sensitivity function at the plant input is `feedback(1, -C*Pd)` in terms of the individually linearized systems:
 
 ```@example MULTIRATE
 @named single_closed = System([plant; controller(Sample(Tslow)(y)); hold; r ~ 0; d ~ 0], t)
 S = get_named_sensitivity(single_closed, single_closed.plant_input; op, hybrid = true)
-bodeplot(S, title = "Sensitivity at the plant input")
+S_explicit = feedback(1, -C.sys * Pd)
+bodeplot(S.sys, label = "get_named_sensitivity of the hybrid model", title = "Sensitivity at the plant input", legend = :bottomright)
+bodeplot!(S_explicit, label = "c2d and feedback", linestyle = :dash)
 ```
 
 ## A model with two clocks
