@@ -8,8 +8,10 @@ on:
   pull_request:
 
 concurrency:
-  group: docs-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Pushes to master and tags deploy to gh-pages and are serialized in commit order,
+  # pull request builds only need the latest commit.
+  group: docs-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
