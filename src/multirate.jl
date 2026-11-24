@@ -508,7 +508,9 @@ function harmonic_response(ml::MultirateLinearization, u, y, w::AbstractVector, 
     yp = uniform_port(find_port(ml.outputs, y, "output"))
     G = lifted_freqresp(ml, up, yp, w)
     Ω = 2π / ml.Tc
-    [dot(tone(yp, w[i] + k * Ω), G[:, :, i] * tone(up, w[i])) / length(yp.times) for i in eachindex(w)]
+    map(eachslice(G; dims = 3), w) do Gi, wi
+        dot(tone(yp, wi + k * Ω), Gi, tone(up, wi)) / length(yp.times)
+    end
 end
 
 """
@@ -541,7 +543,9 @@ function performance_frequency_gain(ml::MultirateLinearization, u, y, w::Abstrac
     up = uniform_port(find_port(ml.inputs, u, "input"))
     yp = uniform_port(find_port(ml.outputs, y, "output"))
     G = lifted_freqresp(ml, up, yp, w)
-    [norm(G[:, :, i] * tone(up, w[i])) / sqrt(length(yp.times)) for i in eachindex(w)]
+    map(eachslice(G; dims = 3), w) do Gi, wi
+        norm(Gi * tone(up, wi)) / sqrt(length(yp.times))
+    end
 end
 
 """
@@ -559,7 +563,7 @@ function robust_frequency_gain(ml::MultirateLinearization, u, y, w::AbstractVect
     up = find_port(ml.inputs, u, "input")
     yp = find_port(ml.outputs, y, "output")
     G = lifted_freqresp(ml, up, yp, w)
-    [opnorm(G[:, :, i]) for i in eachindex(w)]
+    map(opnorm, eachslice(G; dims = 3))
 end
 
 # Search from the nominal gain towards `limit` for the first gain at which `stable` is false.
@@ -646,16 +650,23 @@ function multirate_margins(ml::MultirateLinearization; σ = 0, N = 400)
     M = freqresp(M0, w)
     # The H∞ norm, and the peak on the frequency grid as a safeguard for the norm computation
     hinf, ωinf = hinfnorm(M0)
-    gridpeak, ipeak = findmax(i -> opnorm(M[:, :, i]), eachindex(w))
+    gridpeak, ipeak = findmax(opnorm, eachslice(M; dims = 3))
     gridpeak > hinf && ((hinf, ωinf) = (gridpeak, w[ipeak]))
     disk_margin_dynamic = Diskmargin(1 / hinf, σ; ω0 = ωinf)
     if n == 1
         disk_margin_lti_lower_bound = disk_margin_dynamic
     else
-        for i in eachindex(w)
-            # Change of basis from the instants within the period to the aliased frequencies
-            W = [cis(-(w[i] + m * Ω) * port.times[r]) / sqrt(n) for m in 0:n-1, r in 1:n]
-            M[:, :, i] = W * M[:, :, i] * W'
+        # Change of basis from the instants within the period to the aliased frequencies,
+        # W(w) = W0*D(w) with D(w) = Diagonal(cis.(-w .* times)), applied in place
+        times = port.times
+        W0 = [cis(-m * Ω * times[r]) / sqrt(n) for m in 0:n-1, r in 1:n]
+        buffer = similar(W0)
+        for (Mi, wi) in zip(eachslice(M; dims = 3), w)
+            for c in 1:n, r in 1:n
+                Mi[r, c] *= cis(-wi * (times[r] - times[c]))
+            end
+            mul!(buffer, W0, Mi)
+            mul!(Mi, buffer, W0')
         end
         μ = structured_singular_value(M)
         i1 = argmax(μ)
