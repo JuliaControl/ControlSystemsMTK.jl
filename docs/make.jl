@@ -22,6 +22,7 @@ makedocs(
             "Home" => "index.md",
             "Examples" => [
                   "Batch linearization and gain scheduling" => "batch_linearization.md",
+                  "Hybrid and multi-rate models" => "multirate.md",
             ],
             "API" => "api.md",
       ],

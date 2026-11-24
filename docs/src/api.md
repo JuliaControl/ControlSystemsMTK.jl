@@ -10,6 +10,7 @@ Modules = [ControlSystemsMTK]
 Private = false
 ```
 ```@docs
+ControlSystemsBase.isstable(::MultirateLinearization)
 bodeplot
 linearize
 linearization_function
