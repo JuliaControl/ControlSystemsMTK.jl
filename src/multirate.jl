@@ -457,6 +457,14 @@ smaller than one. Hold variables that are redundant contribute multipliers that 
 """
 multipliers(ml::MultirateLinearization) = eigvals(lifted_matrices(ml)[1])
 
+"""
+    isstable(ml::MultirateLinearization)
+
+Return `true` if the periodic model is exponentially stable, that is, if all characteristic
+[`multipliers`](@ref) have a magnitude smaller than one.
+"""
+ControlSystemsBase.isstable(ml::MultirateLinearization) = all(λ -> abs(λ) < 1, multipliers(ml))
+
 function find_port(ports, s, kind)
     s isa Integer && return ports[s]
     i = findfirst(p -> p.name == Symbol(s), ports)

@@ -182,6 +182,12 @@ The eigenvalues of the monodromy matrix are the *characteristic multipliers* of 
 maximum(abs, λ)
 ```
 
+[`isstable`](@ref) performs this test:
+
+```@example MULTIRATE
+isstable(ml)
+```
+
 Hold variables that are redundant contribute multipliers that are zero.
 
 ### Frequency-domain functions
@@ -330,7 +336,7 @@ In this example, the magnitude of the approximation agrees with the fundamental 
 
 | Task | Function | Validity |
 |:---|:---|:---|
-| Stability | [`multipliers`](@ref) | Exact for the linearization |
+| Stability | [`multipliers`](@ref), [`isstable`](@ref) | Exact for the linearization |
 | Simulation and norms with tools for time-invariant systems | [`lifted_ss`](@ref) | Exact at the instants of the signals |
 | Loop shaping, location of a peak in frequency | [`fundamental_response`](@ref), [`harmonic_response`](@ref) | Exact amplitude of each component; no certificate of stability or robustness |
 | Detection of aliasing | [`performance_frequency_gain`](@ref) in relation to the fundamental response | Among the components that the output distinguishes |

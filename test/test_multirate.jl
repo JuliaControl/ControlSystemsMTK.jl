@@ -99,6 +99,7 @@ end
 @testset "Multipliers" begin
     λ = multipliers(ml)
     @test maximum(abs, λ) < 1
+    @test isstable(ml)
     # The multipliers do not depend on the start of the period
     ml2 = multirate_linearization(loop, [d, r], [y, w, ud]; op, t0 = dtf)
     @test sort(abs.(multipliers(ml2))) ≈ sort(abs.(λ)) atol = 1e-8
@@ -238,6 +239,7 @@ end
         # The model with the gain at the limit has a multiplier on the unit circle
         mlg = multirate_linearization(loop_fast_break, [], [x]; op = merge(opb, Dict(g => gmax)))
         @test maximum(abs, multipliers(mlg)) ≈ 1 atol = 1e-6
+        @test !isstable(multirate_linearization(loop_fast_break, [], [x]; op = merge(opb, Dict(g => 1.02gmax))))
         mlg = multirate_linearization(loop_fast_break, [], [x]; op = merge(opb, Dict(g => 0.98gmax)))
         @test maximum(abs, multipliers(mlg)) < 1
         # Larger classes of perturbations give smaller margins
