@@ -438,7 +438,7 @@ interval, in which a signal with `n` instants per period is represented by the `
 `s@1, …, s@n` in chronological order. The state is the state of `ml` before the first event
 of the period, and the state matrix is the monodromy matrix.
 
-The H∞ norm of the lifted system is the induced norm between the sequences of the sampled
+The H∞ norm of the lifted system is the induced ℓ2 norm between the sequences of the sampled
 signals.
 """
 function lifted_ss(ml::MultirateLinearization)
@@ -555,7 +555,8 @@ The largest singular value of the frequency response of the lifted system betwee
 signals `u` and `y`, for each element of the frequency vector `w`: the largest gain, in
 terms of the energy of the sequences of sampled values, over all inputs that are composed of
 the frequencies `w + 2πk/Tc`. The result is periodic in `w` with period `2π/Tc`, and for a
-stable model its supremum is the induced norm between the sequences of the sampled signals.
+stable model its supremum is the H∞ norm of the lifted system between the two signals, that
+is, the induced ℓ2 norm between the sequences of their sampled values.
 For signals with `n_u` and `n_y` instants per period,
 `performance_frequency_gain ≤ sqrt(n_u/n_y)*robust_frequency_gain`.
 """

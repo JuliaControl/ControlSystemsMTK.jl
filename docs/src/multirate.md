@@ -238,7 +238,7 @@ The following properties determine how the functions may be used.
 
 - The fundamental response is not a transfer function: it is not the ratio between the transforms of the output and the input. Neither stability nor stability margins can be concluded from it.
 - The functions describe an input that is held on its grid and an output that is observed on its grid. Goodwin and Salgado (1994) define *fundamental sensitivity functions* for continuous-time sinusoids and continuous-time outputs, which the fundamental response of a sensitivity function approaches as the grid of the continuous-time signals is refined, see the next section. For a loop with one clock, robust stability for multiplicative plant perturbations with the weight ``W_1`` requires ``\lVert T^0 W_1\rVert_\infty \le 1``, and for divisive perturbations with the weight ``W_2`` it requires ``\lVert S^0 W_2\rVert_\infty \le 1``, where ``S^0`` and ``T^0`` are the fundamental sensitivity and complementary sensitivity functions (Seron, Braslavsky and Goodwin, 1997). These conditions are necessary and not sufficient: a small peak is not a proof of robustness.
-- For a stable model, the supremum over frequency of the robust frequency gain is the induced ``\ell_2`` norm from the sequence of values of the input to the sequence of values of the output.
+- For a stable model, the supremum over frequency of the robust frequency gain is the H∞ norm of the lifted system between the selected signals, that is, the induced ``\ell_2`` norm from the sequence of values of the input to the sequence of values of the output. It equals `hinfnorm` of the corresponding channels of [`lifted_ss`](@ref), and for a model with one clock and signals on that clock it is the H∞ norm of the discrete-time transfer function, for example the peak of the sensitivity function. It is not the induced norm between continuous-time signals, which the refinement of the grid in the next section approximates.
 
 ### Behavior between the ticks
 
@@ -340,7 +340,7 @@ In this example, the magnitude of the approximation agrees with the fundamental 
 | Simulation and norms with tools for time-invariant systems | [`lifted_ss`](@ref) | Exact at the instants of the signals |
 | Loop shaping, location of a peak in frequency | [`fundamental_response`](@ref), [`harmonic_response`](@ref) | Exact amplitude of each component; no certificate of stability or robustness |
 | Detection of aliasing | [`performance_frequency_gain`](@ref) in relation to the fundamental response | Among the components that the output distinguishes |
-| Largest gain | [`robust_frequency_gain`](@ref) | For a stable model, its supremum over frequency is the induced ``\ell_2`` norm between the sequences of values of the selected signals |
+| Largest gain (H∞ norm) | [`robust_frequency_gain`](@ref) | For a stable model, its supremum over frequency is the H∞ norm of the lifted system between the selected signals, that is, the induced ``\ell_2`` norm between their sequences of values |
 | Margins | [`multirate_margins`](@ref) | Per class of perturbations, see above |
 | A rational model at one rate | [`single_rate_ss`](@ref) | Approximation |
 
