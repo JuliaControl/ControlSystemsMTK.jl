@@ -495,7 +495,9 @@ tone(port, w) = cis.(w .* port.times)
 # (instants of y) × (instants of u) × length(w)
 function lifted_freqresp(ml, u, y, w)
     F, G, H, E = lifted_matrices(ml)
-    sys = ss(F, G[:, u.channels], H[y.channels, :], E[y.channels, u.channels], ml.Tc)
+    # State variables that are not connected to the selected signals are removed before the
+    # evaluation of the frequency response
+    sys = sminreal(ss(F, G[:, u.channels], H[y.channels, :], E[y.channels, u.channels], ml.Tc))
     freqresp(sys, w)
 end
 
