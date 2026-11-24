@@ -130,6 +130,16 @@ function hybrid_ss(hl; convert_partition = nothing, descriptor = true, simple_in
         Ts === nothing ? P : c2d(P, Ts)
     end
     convert_partition === nothing || (Ts = isdiscrete(systems[1]) ? systems[1].Ts : nothing)
+    if convert_partition === nothing
+        # A clocked signal that is read through `Sample(Hold(x))` within its own clock has the
+        # value held before the tick, which the instantaneous connection below does not
+        # represent
+        for c in hl.connections
+            if c.from != ci && c.to != ci && is_sample(partitions[c.to].inputs[c.input])
+                throw(ArgumentError("A clocked signal is read through `Sample` within its own clock partition, which delays it by one tick. The assembly of such a model into a single system is not supported. `multirate_linearization` represents such a model."))
+            end
+        end
+    end
     if ci !== nothing && convert_partition === nothing
         # A sampled signal with direct feedthrough from a held signal depends on the value
         # that was held before the tick, which the instantaneous connection below does not

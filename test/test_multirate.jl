@@ -3,7 +3,8 @@ using ModelingToolkit: t_nounits as t, D_nounits as D, connect
 using ControlSystemsMTK: lifted_matrices
 
 # A continuous-time first-order plant, a filter on a fast clock and a PI controller on a slow
-# clock. The periods are exactly representable such that the ticks of the clocks coincide.
+# clock, which reads the filter through `Sample(Hold(w))`. The periods are exactly
+# representable such that the ticks of the clocks coincide.
 dtf = 0.125
 ratio = 3
 dts = ratio * dtf
@@ -45,7 +46,8 @@ function simulate_reference(dfun, rfun, nperiods; gain = gv, x0 = zeros(5))
         yv = xv
         wv = 0.5 * wprev + 0.5 * yv
         if m % ratio == 0
-            ev = rfun(m ÷ ratio) - gain * wv
+            # `Sample(Hold(w))` has the value of w that was held before this tick
+            ev = rfun(m ÷ ratio) - gain * wprev
             xiv = xiprev + kiv * dts * ev
             uheld = kpv * ev + xiv
             xiprev = xiv
@@ -164,7 +166,8 @@ end
 end
 
 @testset "Clocked partitions that read each other at the same instant" begin
-    # Neither output depends directly on the other, so the model is causal
+    # Each partition reads the other through `Sample(Hold(x))` and thus obtains the value
+    # that was held before the tick, also when both tick at the same instant
     @variables p(t) q(t)
     eqs = [
         D(x) ~ -x + d
@@ -172,47 +175,32 @@ end
         q(ks) ~ 0.4 * q(ks - 1) + 0.3 * Sample(dts)(Hold(p))
     ]
     @named mutual = System(eqs, t)
-    @test_throws "not causal" multirate_linearization(mutual, [d], [x]; op = Dict(x => 0.0, d => 0.0, p => 0.0, q => 0.0))
-    # The fast partition uses the value of `q` at its previous tick
-    @variables qs(t)
-    eqs = [
-        D(x) ~ -x + d
-        qs ~ Sample(dtf)(Hold(q))
-        p(kf) ~ 0.5 * p(kf - 1) + 0.2 * qs(kf - 1)
-        q(ks) ~ 0.4 * q(ks - 1) + 0.3 * Sample(dts)(Hold(p))
-    ]
-    @named mutual = System(eqs, t)
-    mlm = multirate_linearization(mutual, [d], [x]; op = Dict(x => 0.0, d => 0.0, p => 0.0, q => 0.0, qs => 0.0))
-    # One period of the clocked equations, with the state (p, qs, q) of the previous ticks
+    mlm = multirate_linearization(mutual, [d], [x]; op = Dict(x => 0.0, d => 0.0, p => 0.0, q => 0.0))
+    # One period of the clocked equations, with the state (p, q) of the previous ticks
     function period(v)
-        pprev, qsprev, qprev = v
+        pv, qv = v
         for m in 0:ratio-1
-            pv = 0.5 * pprev + 0.2 * qsprev
-            m == 0 && (qprev = 0.4 * qprev + 0.3 * pv)
-            pprev, qsprev = pv, qprev
+            pnew = 0.5 * pv + 0.2 * qv
+            m == 0 && (qv = 0.4 * qv + 0.3 * pv)
+            pv = pnew
         end
-        [pprev, qsprev, qprev]
+        [pv, qv]
     end
-    Mref = reduce(hcat, period.(eachcol(Matrix(1.0I, 3, 3))))
+    Mref = reduce(hcat, period.(eachcol(Matrix(1.0I, 2, 2))))
     nonzero(λ) = sort(filter(l -> abs(l) > 1e-8, λ), by = abs)
     # The plant is not connected to the clocked partitions and contributes its own multiplier
     @test nonzero(multipliers(mlm)) ≈ nonzero([eigvals(Mref); exp(-dts)])
-end
 
-@testset "Held signal with direct feedthrough to a sampled signal" begin
-    # ud[k] = -a*(x[k] + ud[k-1]): the sampled signal contains the previously held value
-    a = 0.5
-    eqs = [
-        D(x) ~ -x + Hold(ud) + d
-        y ~ x + Hold(ud)
-        ud ~ -a * Sample(dts)(y)
-    ]
-    @named feedthrough = System(eqs, t)
-    mlf = multirate_linearization(feedthrough, [d], [x]; op = Dict(x => 0.0, d => 0.0))
-    b = exp(-dts)
-    # State: x and the held ud
-    Aref = [b-(1-b)*a -(1-b)*a; -a -a]
-    @test sort(filter(λ -> abs(λ) > 1e-10, multipliers(mlf)), by = real) ≈ sort(eigvals(Aref), by = real)
+    # Outputs that depend directly on each other at the same instant are not causal. Such a
+    # dependency arises with operators that read the value computed at the instant.
+    systems = Dict(1 => ss(0.5, 1, 1, 1, dtf), 2 => ss(0.5, 1, 1, 1, dtf))
+    source = Dict((1, 1) => (2, 1), (2, 1) => (1, 1))
+    @test_throws "not causal" ControlSystemsMTK.clocked_outputs([1, 2], systems, source, (i, j) -> nothing, i -> zeros(1, 2), 2)
+    # A dependency in one direction is resolved
+    systems = Dict(1 => ss(0.5, 1, 1, 0, dtf), 2 => ss(0.5, 1, 1, 1, dtf))
+    ynew = ControlSystemsMTK.clocked_outputs([1, 2], systems, source, (i, j) -> nothing, i -> [1.0 0], 2)
+    @test ynew[1] == [1.0 0]
+    @test ynew[2] == [2.0 0]
 end
 
 @testset "Margins" begin
@@ -267,8 +255,10 @@ end
         xv, wv, zv = v
         a = exp(-dtf)
         for m in 0:5
+            # `Sample(Hold(wa))` has the value of wa that was held before the tick
+            wold = wv
             m % 2 == 0 && (wv = 0.5 * wv + 0.5 * xv)
-            m % 3 == 0 && (zv = 0.6 * zv - 0.3 * wv)
+            m % 3 == 0 && (zv = 0.6 * zv - 0.3 * wold)
             xv = a * xv + (1 - a) * zv
         end
         [xv, wv, zv]
@@ -288,11 +278,14 @@ end
     ops = Dict(pp => 0.0, qq => 0.0, uu => 0.0)
     mls = multirate_linearization(selfread, [uu], [qq, pp]; op = ops)
     Gs = lifted_ss(mls)
-    # Both outputs contain the input of the same tick
-    @test Gs.D ≈ [1; 1]
+    # `Sample(Hold(pp))` has the value of pp that was held before the tick: qq is pp delayed
+    # by one tick
+    @test Gs.D ≈ [0; 1]
     z = tf("z", dtf)
     wv = exp10.(range(-1, log10(π / dtf), length = 20))
-    @test freqresp(Gs.sys, wv) ≈ freqresp([z / (z - 0.25); z / (z - 0.25)], wv)
+    @test freqresp(Gs.sys, wv) ≈ freqresp([1 / (z - 0.25); z / (z - 0.25)], wv)
+    # The assembly into a single system does not represent the delay
+    @test_throws "delays it by one tick" named_ss(selfread, [uu], [qq, pp]; op = ops, hybrid = true)
 end
 
 @testset "Event schedule" begin

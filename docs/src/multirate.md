@@ -78,7 +78,7 @@ bodeplot!(S_explicit, label = "c2d and feedback", linestyle = :dash)
 
 ## A model with two clocks
 
-The measurement is now filtered by a filter on a fast clock, and the controller on the slow clock reads the output of the filter.
+The measurement is now filtered by a filter on a fast clock, and the controller on the slow clock reads the output of the filter through `Sample(Hold(yf))`. At a tick of the slow clock, which coincides with a tick of the fast clock, the controller thereby obtains the output that the filter held before the tick, that is, the output of the previous tick of the fast clock.
 
 ```@example MULTIRATE
 fastfilter = [yf(kfast) ~ 0.5 * yf(kfast - 1) + 0.5 * Sample(Tfast)(y)]
@@ -133,7 +133,7 @@ Each signal has a set of instants within the period: the ticks of its clock for 
 
 1. Inputs of the continuous-time partition that are specified by the user take their new values, if the event is an instant of their grid.
 2. The signals of the continuous-time partition that are sampled are evaluated with the values that the clocked partitions held before the event. A sampled signal that depends directly on a held signal thus contains the previously held value.
-3. The clocked partitions that tick compute their outputs from their state variables before the event, and then update their state variables. A partition that reads a clocked signal that is computed at the same instant reads the new value. Outputs that depend directly on each other in a cycle are rejected, also if the cycle could be solved algebraically.
+3. The clocked partitions that tick compute their outputs from their state variables before the event, and then update their state variables. A clocked signal that is read through `Sample(Hold(x))` has the value that was held before the event: if `x` is computed at the same instant, the reader obtains the previous value of `x`. A clocked signal that is read through another operator, such as `Latest` of SynchToolkit, has the value that is computed at the same instant. Outputs that depend directly on each other in a cycle through such operators are rejected, also if the cycle could be solved algebraically.
 4. The held values are updated, and the outputs of the continuous-time partition that are specified by the user are observed, if the event is an instant of their grid.
 5. The continuous-time partition is integrated exactly to the next event with constant inputs.
 
@@ -351,8 +351,8 @@ In this example, the magnitude of the approximation agrees with the fundamental 
 - The clocks are required to be periodic with commensurate periods. The ratios between the periods are approximated by rational numbers within the tolerance `tol`, and ratios with a numerator or denominator above 10000 are rejected. Events, state machines and clocks without a fixed period are not accounted for.
 - The lifted system has one channel per instant of each signal. A common period that is large in relation to the fastest clock gives a large number of channels.
 - Ticks of different clocks that are closer than `tol*Tc` are treated as simultaneous. In a simulation, tick times that are computed in floating-point arithmetic can separate ticks that coincide mathematically (as for the periods 0.1 and 0.3), and the partitions are then evaluated in the order of their tick times.
-- Outputs of clocked partitions that tick at the same instant and depend directly on each other in a cycle are rejected, also if the cycle could be solved algebraically.
-- The connection between two clocked partitions is expressed as `Sample(Hold(x))` in ModelingToolkit and as `Latest` in SynchToolkit. Both are treated according to item 3 of the operations at an event. This was compared with simulations of models compiled with SynchToolkit, with `Latest` and clock ratios of two and three.
+- Outputs of clocked partitions that tick at the same instant and depend directly on each other in a cycle, through operators that read the value computed at that instant, are rejected, also if the cycle could be solved algebraically.
+- A connection between two clocked partitions can be expressed as `Sample(Hold(x))` or with the operator `Latest` of SynchToolkit. These are not equivalent: at an instant where both clocks tick, `Sample(Hold(x))` gives the value of `x` from its previous tick and `Latest` the value computed at that instant, see item 3 of the operations at an event. The treatment of `Latest` was compared with simulations of models compiled with SynchToolkit, for clock ratios of two, three and four. SynchToolkit does not accept `Sample(Hold(x))` between clocked partitions, so its treatment follows the definition of the operators and was not compared with a simulation. A signal that is read through `Sample(Hold(x))` within its own clock partition is delayed by one tick; `named_ss` rejects such a model.
 - If the inputs are specified through analysis points, they are required to belong to one clock partition, and correspondingly for the outputs, since their order cannot be recovered otherwise.
 - A lifted system used for synthesis requires a controller that respects the chronological order of the channels within the period, which standard synthesis methods do not enforce.
 

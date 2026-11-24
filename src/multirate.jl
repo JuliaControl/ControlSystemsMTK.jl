@@ -146,6 +146,8 @@ function event_schedule(clocks, Tc, t0, atol)
     event_times, event_ticks, ticks
 end
 
+is_sample(term) = Symbolics.iscall(term) && Symbolics.operation(term) isa ModelingToolkit.Sample
+
 # Compute the outputs of the clocked partitions `ticking` at an event. `known(i, j)` returns
 # the row for input `j` of partition `i` if it does not depend on an output of a partition
 # that ticks at this event, and `nothing` otherwise. An output that depends directly, through
@@ -203,9 +205,12 @@ The operations at an event are, in this order:
    feedthrough from a held signal thus contains the previously held value, and a sampled
    signal with direct feedthrough from a user input contains its new value.
 3. The clocked partitions that tick compute their outputs from their state before the
-   event, and then update their state. A partition that reads a clocked signal that is
-   computed at the same instant, by another partition or by itself, reads the new value.
-   Outputs that depend directly on each other in a cycle are rejected.
+   event, and then update their state. A clocked signal that is read through
+   `Sample(Hold(x))` has the value that was held before the event: if `x` is computed at
+   the same instant, the reader obtains its previous value. A clocked signal that is read
+   through another operator, such as `Latest` of SynchToolkit, has the value computed at
+   the same instant. Outputs that depend directly on each other in a cycle through such
+   operators are rejected.
 4. The held values are updated, and outputs of the continuous-time partition that are
    specified by the user are observed, if the event is an instant of their grid.
 5. The continuous-time partition is integrated exactly to the next event with constant
@@ -315,6 +320,10 @@ function multirate_linearization(hl; oversample::Integer = 1, t0 = 0.0, continuo
 
     # The source of each input of each partition that crosses a clock boundary
     source = Dict((c.to, c.input) => (c.from, c.output) for c in hl.connections)
+    # An input of a clocked partition that is expressed with `Sample`, as in `Sample(Hold(x))`,
+    # reads the value that was held before the event. Other operators between clocked
+    # partitions, such as `Latest` of SynchToolkit, read a value computed at the event.
+    reads_held = Set((c.to, c.input) for c in hl.connections if is_sample(partitions[c.to].inputs[c.input]))
 
     A = Matrix{Float64}[]; B = Matrix{Float64}[]; C = Matrix{Float64}[]; D = Matrix{Float64}[]
     output_channels = Vector{Int}[]
@@ -355,7 +364,7 @@ function multirate_linearization(hl; oversample::Integer = 1, t0 = 0.0, continuo
                 zeros(n + NU)
             else
                 from, o = source[(i, j)]
-                from == ci ? yc[o, :] : from in ticking ? nothing : R[hidx[(from, o)], :]
+                from == ci ? yc[o, :] : (from in ticking && (i, j) ∉ reads_held) ? nothing : R[hidx[(from, o)], :]
             end
         end
         ynew = clocked_outputs(ticking, systems, source, known, i -> systems[i].C * R[xidx[i], :], n + NU)
