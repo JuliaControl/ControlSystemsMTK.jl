@@ -1,7 +1,7 @@
 name = "ControlSystemsMTK"
 uuid = "687d7614-c7e5-45fc-bfc3-9ee385575c88"
-authors = ["Fredrik Bagge Carlson"]
 version = "2.9.0"
+authors = ["Fredrik Bagge Carlson"]
 
 [deps]
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
@@ -14,9 +14,18 @@ RobustAndOptimalControl = "21fd56a4-db03-40ee-82ee-a87907bee541"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
+[sources.ModelingToolkit]
+rev = "master"
+url = "https://github.com/SciML/ModelingToolkit.jl"
+
+[sources.ModelingToolkitBase]
+rev = "master"
+subdir = "lib/ModelingToolkitBase"
+url = "https://github.com/SciML/ModelingToolkit.jl"
+
 [compat]
 ControlSystemsBase = "1.0.1"
-ModelingToolkit = "11.48"
+ModelingToolkit = "11.48, 11"
 ModelingToolkitBase = "1.81"
 ModelingToolkitStandardLibrary = "2"
 MonteCarloMeasurements = "1.1"
@@ -35,7 +44,3 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "ControlSystems", "DataInterpolations", "GenericLinearAlgebra", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqNonlinearSolve"]
-
-[sources]
-ModelingToolkit = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "master"}
-ModelingToolkitBase = {url = "https://github.com/SciML/ModelingToolkit.jl", rev = "master", subdir = "lib/ModelingToolkitBase"}
