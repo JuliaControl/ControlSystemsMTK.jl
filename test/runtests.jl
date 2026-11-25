@@ -12,6 +12,16 @@ using Test
         include("test_batchlin.jl")
     end
 
+    @testset "hybrid" begin
+        @info "Testing hybrid"
+        include("test_hybrid.jl")
+    end
+
+    @testset "multirate" begin
+        @info "Testing multirate"
+        include("test_multirate.jl")
+    end
+
     # @testset "symbolic_opt" begin
     #     @info "Testing symbolic_opt"
     #     include("test_symbolic_opt.jl")
