@@ -59,6 +59,10 @@ lin_fun, sslin = ModelingToolkit.linearization_function(P, [input.u], [output.u]
 P02_linfun = named_ss(sslin, lin_fun, [output.u]; op)
 @test P02_linfun.u == [Symbol("input₊u(t)")]
 @test ss(P02_linfun) == P0
+# The outputs given by the printed names of the output variables
+P02_symbols = named_ss(sslin, lin_fun, Symbol.(ModelingToolkit.outputs(sslin)); op)
+@test P02_symbols.y == [Symbol("output₊u(t)")]
+@test ss(P02_symbols) == P0
 
 # same for controller
 x = unknowns(C)

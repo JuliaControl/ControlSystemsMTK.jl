@@ -89,6 +89,19 @@ function channel_names(names, widths)
     return out
 end
 
+# The outputs of the simplified system `ssys`, where an output given as a `Symbol` that equals
+# the printed name of a variable of `ssys`, such as `Symbol("y(t)")`, is replaced by that
+# variable. The simplified system contains no analysis points, so such a `Symbol` names a
+# variable.
+function output_variables(ssys, outputs)
+    any(o -> o isa Symbol, outputs) || return outputs
+    byname = Dict{Symbol, Any}()
+    for v in Iterators.flatten((ModelingToolkit.outputs(ssys), unknowns(ssys), (eq.lhs for eq in observed(ssys))))
+        get!(byname, Symbol(string(v)), v)
+    end
+    [o isa Symbol ? get(byname, o, o) : o for o in outputs]
+end
+
 """
     signal_channel_names(sys, signals)
 
@@ -222,7 +235,7 @@ function RobustAndOptimalControl.named_ss(
     # is what the operating-point extraction below already relies on.
     inputs = ModelingToolkit.inputs(ssys)
     unames = signal_channel_names(ssys, inputs)
-    ynames = signal_channel_names(ssys, outputs)
+    ynames = signal_channel_names(ssys, output_variables(ssys, outputs))
     nu = length(unames)
     if nu > 0 && size(matrices.B, 2) == 2nu
         # This indicates that input derivatives are present
