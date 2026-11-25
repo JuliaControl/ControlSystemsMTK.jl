@@ -58,11 +58,25 @@ end
 
 symstr(x) = Symbol(x isa AnalysisPoint ? x.name : string(x))
 
-# Number of scalar channels of the signal `x`, a variable or an analysis point (an
-# `AnalysisPoint` or its `Symbol` name) of `sys`. The width of an analysis point is the width
-# of the variable that drives it.
+# The variable of `sys` whose printed name is `s`, such as `Symbol("y(t)")`, or `nothing`.
+# The names of analysis points do not contain the argument of a variable, so that the names of
+# variables and analysis points do not coincide.
+function variable_named(sys, s::Symbol)
+    name = string(s)
+    for v in Iterators.flatten((ModelingToolkit.outputs(sys), ModelingToolkit.inputs(sys),
+            unknowns(sys), (eq.lhs for eq in observed(sys))))
+        string(v) == name && return v
+    end
+    nothing
+end
+
+# Number of scalar channels of the signal `x` of `sys`: a variable, the printed name of a
+# variable as a `Symbol`, or an analysis point (an `AnalysisPoint` or its `Symbol` name). The
+# width of an analysis point is the width of the variable that drives it.
 function signal_width(sys, x)
-    if x isa Union{Symbol, AnalysisPoint}
+    if x isa Symbol && (v = variable_named(sys, x)) !== nothing
+        x = v
+    elseif x isa Union{Symbol, AnalysisPoint}
         ap = only(ModelingToolkit.canonicalize_ap(sys, x))
         ap isa Symbol && (ap = AnalysisPoint(ap))
         _, (x,) = ModelingToolkit.apply_transformation(ModelingToolkit.GetInput(ap), sys)
@@ -94,8 +108,8 @@ end
 
 Return the names of the scalar channels of `signals`, in the order in which [`named_ss`](@ref)
 and the `get_named_*` functions name the inputs and outputs of the linearized system. Each
-entry of `signals` is a variable or an analysis point (an `AnalysisPoint` or its name) of
-`sys`. A signal `s` with one element has the channel `s`, and an array-valued signal `s` with
+entry of `signals` is a variable, the printed name of a variable as a `Symbol` (such as
+`Symbol("y(t)")`), or an analysis point (an `AnalysisPoint` or its name) of `sys`. A signal `s` with one element has the channel `s`, and an array-valued signal `s` with
 `n` elements has the channels `s1, ..., sn`. An `ArgumentError` is thrown if two channel
 names coincide.
 """
